@@ -1,6 +1,6 @@
 {
   "domain": "flight_card",
-  "name": "Flight Card",
+  "name": "ADS-B Nearby Aircraft",
   "codeowners": ["@aplittlecub"],
   "config_flow": true,
   "dependencies": ["frontend", "http"],

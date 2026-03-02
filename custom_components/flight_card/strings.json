@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set up Flight Card",
+        "title": "Set up ADS-B Nearby Aircraft",
         "description": "Configure the aircraft data source and polling behavior.",
         "data": {
           "name": "Name",
@@ -17,7 +17,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Flight Card options",
+        "title": "ADS-B Nearby Aircraft options",
         "description": "Adjust data source and update behavior.",
         "data": {
           "data_url": "Data URL",

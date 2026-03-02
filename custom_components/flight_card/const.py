@@ -1,4 +1,4 @@
-"""Constants for the Flight Card integration."""
+"""Constants for the ADS-B Nearby Aircraft integration."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ CONF_UPDATE_INTERVAL = "update_interval"
 CONF_MAX_AGE = "max_age"
 CONF_HEXDB_ENABLED = "hexdb_enabled"
 
-DEFAULT_NAME = "Flight Card"
+DEFAULT_NAME = "ADS-B Nearby Aircraft"
 DEFAULT_DATA_URL = "http://192.168.1.250/skyaware/data/aircraft.json"
 LEGACY_DATA_URLS = {
     "http://10.10.0.249/skyaware/data/aircraft.json",

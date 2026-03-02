@@ -1,7 +1,7 @@
 {
-  "name": "flight-card",
+  "name": "adsb-nearby-aircraft",
   "version": "0.3.1",
-  "description": "Home Assistant Lovelace card for live aircraft mapping from SkyAware.",
+  "description": "Home Assistant integration and Lovelace card for ADS-B nearby aircraft mapping.",
   "type": "module",
   "license": "MIT",
   "scripts": {

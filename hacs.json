@@ -1,5 +1,5 @@
 {
-  "name": "Flight Card",
+  "name": "ADS-B Nearby Aircraft",
   "filename": "flight-card.js",
   "render_readme": true
 }

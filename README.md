@@ -1,13 +1,13 @@
-# Flight Card
+# ADS-B Nearby Aircraft
 
-Flight Card is a Home Assistant solution for showing live nearby aircraft on a Lovelace map.
+ADS-B Nearby Aircraft is a Home Assistant solution for showing live nearby aircraft on a Lovelace map.
 
 It includes:
 
 - a backend integration (`flight_card`) that polls SkyAware and enriches data with HexDB
 - a Lovelace custom card (`custom:flight-card`) that renders aircraft on the map
 
-![Flight Card preview](docs/preview.svg)
+![ADS-B Nearby Aircraft preview](docs/preview.svg)
 
 ## Requirements
 
@@ -18,9 +18,9 @@ It includes:
 ## Install (HACS - Recommended)
 
 1. Add `https://github.com/aplittlecub/Flight-Card` as an **Integration** custom repository.
-2. Install **Flight Card** (Integration) in HACS.
+2. Install **ADS-B Nearby Aircraft** (Integration) in HACS.
 3. Restart Home Assistant.
-4. Go to **Settings -> Devices & Services -> Add Integration** and add **Flight Card**.
+4. Go to **Settings -> Devices & Services -> Add Integration** and add **ADS-B Nearby Aircraft**.
 5. Hard refresh the browser once (`Shift+Reload`) so Home Assistant picks up the auto-registered card module.
 
 This integration now auto-serves and auto-loads the card JavaScript from:
@@ -30,7 +30,7 @@ This integration now auto-serves and auto-loads the card JavaScript from:
 ## Configure Integration
 
 1. Go to **Settings -> Devices & Services -> Add Integration**.
-2. Search for **Flight Card**.
+2. Search for **ADS-B Nearby Aircraft**.
 3. Configure:
    - `Data URL` (example: `http://192.168.1.250/skyaware/data/aircraft.json`)
    - `Update interval (seconds)`
@@ -43,8 +43,8 @@ This integration now auto-serves and auto-loads the card JavaScript from:
 
 ```yaml
 type: custom:flight-card
-title: Nearby Aircraft
-# optional: card will auto-detect a compatible Flight Card sensor
+title: ADS-B Nearby Aircraft
+# optional: card will auto-detect a compatible ADS-B Nearby Aircraft sensor
 # entity: sensor.aircraft
 map_height: 420
 default_zoom: 8
@@ -55,8 +55,8 @@ fit_bounds: true
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | string | `Nearby Aircraft` | Card title |
-| `entity` | string | auto-detect | Optional sensor entity created by the Flight Card integration |
+| `title` | string | `ADS-B Nearby Aircraft` | Card title |
+| `entity` | string | auto-detect | Optional sensor entity created by the ADS-B Nearby Aircraft integration |
 | `map_height` | number | `420` | Map height in px |
 | `default_zoom` | number | `8` | Initial zoom |
 | `fit_bounds` | boolean | `true` | Auto-fit map to aircraft once per load |
@@ -139,7 +139,7 @@ If you are not using HACS:
 
 ## Licensing & Attribution (Final Published - v0.3.1)
 
-Flight Card source code is published under **MIT** (see `package.json`).
+ADS-B Nearby Aircraft source code is published under **MIT** (see `package.json`).
 
 Third-party assets/services used by this release:
 

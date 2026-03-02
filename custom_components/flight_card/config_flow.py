@@ -1,4 +1,4 @@
-"""Config flow for Flight Card integration."""
+"""Config flow for ADS-B Nearby Aircraft integration."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ def _options_schema() -> vol.Schema:
 
 
 class FlightCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Flight Card."""
+    """Handle a config flow for ADS-B Nearby Aircraft."""
 
     VERSION = 1
 
@@ -97,7 +97,7 @@ class FlightCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FlightCardOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Flight Card."""
+    """Handle options flow for ADS-B Nearby Aircraft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""

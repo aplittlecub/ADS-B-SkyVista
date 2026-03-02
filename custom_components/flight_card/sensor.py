@@ -1,4 +1,4 @@
-"""Sensor platform for Flight Card integration."""
+"""Sensor platform for ADS-B Nearby Aircraft integration."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Flight Card sensor from config entry."""
+    """Set up ADS-B Nearby Aircraft sensor from config entry."""
     coordinator: FlightCardDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([FlightCardAircraftSensor(coordinator, entry)])
 
