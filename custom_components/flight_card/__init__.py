@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from homeassistant.components.frontend import add_extra_js_url, remove_extra_js_url
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import FlightCardDataUpdateCoordinator
@@ -18,7 +19,12 @@ _LOGGER = logging.getLogger(__name__)
 CARD_JS_FILE = Path(__file__).with_name("flight-card.js")
 CARD_JS_URL = "/flight_card/flight-card.js"
 DATA_FRONTEND_REGISTERED = "_frontend_registered"
-DATA_FRONTEND_REFCOUNT = "_frontend_refcount"
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up Flight Card integration."""
+    await _async_setup_frontend(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -28,7 +34,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     domain_data = hass.data.setdefault(DOMAIN, {})
     domain_data[entry.entry_id] = coordinator
-    await _async_setup_frontend(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
@@ -46,15 +51,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         domain_data = hass.data[DOMAIN]
         domain_data.pop(entry.entry_id, None)
-        await _async_unload_frontend(hass)
     return unload_ok
 
 
 async def _async_setup_frontend(hass: HomeAssistant) -> None:
     """Register and auto-load the Flight Card frontend module."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    refcount = int(domain_data.get(DATA_FRONTEND_REFCOUNT, 0))
-    domain_data[DATA_FRONTEND_REFCOUNT] = refcount + 1
 
     if domain_data.get(DATA_FRONTEND_REGISTERED):
         return
@@ -78,16 +80,3 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
 
     add_extra_js_url(hass, CARD_JS_URL)
     domain_data[DATA_FRONTEND_REGISTERED] = True
-
-
-async def _async_unload_frontend(hass: HomeAssistant) -> None:
-    """Remove the frontend module when the last entry unloads."""
-    domain_data = hass.data.setdefault(DOMAIN, {})
-    refcount = int(domain_data.get(DATA_FRONTEND_REFCOUNT, 0))
-    if refcount <= 1:
-        domain_data.pop(DATA_FRONTEND_REFCOUNT, None)
-        if domain_data.pop(DATA_FRONTEND_REGISTERED, False):
-            remove_extra_js_url(hass, CARD_JS_URL)
-        return
-
-    domain_data[DATA_FRONTEND_REFCOUNT] = refcount - 1
