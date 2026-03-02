@@ -17,16 +17,15 @@ It includes:
 
 ## Install (HACS - Recommended)
 
-This repository should be installed in HACS as **both** repository types:
-
-1. Add `https://github.com/aplittlecub/Flight-Card` as **Integration** custom repository.
-2. Install **Flight Card** (Integration).
+1. Add `https://github.com/aplittlecub/Flight-Card` as an **Integration** custom repository.
+2. Install **Flight Card** (Integration) in HACS.
 3. Restart Home Assistant.
-4. Add the same repo as **Dashboard** custom repository.
-5. Install **Flight Card** (Dashboard).
-6. Confirm Lovelace resource exists:
-   - URL: `/hacsfiles/Flight-Card/flight-card.js`
-   - Type: `JavaScript Module`
+4. Go to **Settings -> Devices & Services -> Add Integration** and add **Flight Card**.
+5. Hard refresh the browser once (`Shift+Reload`) so Home Assistant picks up the auto-registered card module.
+
+This integration now auto-serves and auto-loads the card JavaScript from:
+
+- `/flight_card/flight-card.js`
 
 ## Configure Integration
 
@@ -38,14 +37,14 @@ This repository should be installed in HACS as **both** repository types:
    - `Max aircraft age (seconds)`
    - `Enable HexDB enrichment`
 4. Finish setup.
-5. Confirm the sensor exists in **Developer Tools -> States** (usually `sensor.aircraft`).
+5. Confirm the sensor exists in **Developer Tools -> States** (usually `sensor.flight_card_aircraft`).
 
 ## Add Card to Dashboard
 
 ```yaml
 type: custom:flight-card
 title: Nearby Aircraft
-entity: sensor.aircraft
+entity: sensor.flight_card_aircraft
 map_height: 420
 default_zoom: 8
 fit_bounds: true
@@ -56,7 +55,7 @@ fit_bounds: true
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `title` | string | `Nearby Aircraft` | Card title |
-| `entity` | string | `sensor.aircraft` | Sensor created by the Flight Card integration |
+| `entity` | string | `sensor.flight_card_aircraft` | Sensor created by the Flight Card integration |
 | `map_height` | number | `420` | Map height in px |
 | `default_zoom` | number | `8` | Initial zoom |
 | `fit_bounds` | boolean | `true` | Auto-fit map to aircraft once per load |
@@ -77,7 +76,8 @@ fit_bounds: true
 ## Troubleshooting
 
 - If the card says `Entity not found`, set `entity:` to the exact sensor ID from Developer Tools.
-- If the map is empty but sensor has data, hard refresh browser and cache-bust the resource URL.
+- If the card does not appear in card picker, hard refresh browser (`Shift+Reload`) after restarting Home Assistant.
+- If the map is empty but sensor has data, confirm the module URL returns `200`: `http://<HA_HOST>:8123/flight_card/flight-card.js`.
 - If the integration does not appear, restart Home Assistant after installation.
 - If the sensor is unavailable, verify Home Assistant can reach your `data_url`.
 
@@ -86,12 +86,9 @@ fit_bounds: true
 If you are not using HACS:
 
 1. Copy `custom_components/flight_card` into your Home Assistant config folder (`/config/custom_components/flight_card`).
-2. Build frontend bundle: `npm run build`.
-3. Copy `dist/flight-card.js` into `/config/www/flight-card/flight-card.js`.
-4. Add Lovelace resource:
-   - URL: `/local/flight-card/flight-card.js`
-   - Type: `JavaScript Module`
-5. Restart Home Assistant.
+2. Restart Home Assistant.
+3. Add the integration in **Settings -> Devices & Services**.
+4. Hard refresh the browser (`Shift+Reload`).
 
 ## Licensing & Attribution (Final Published - v0.3.1)
 

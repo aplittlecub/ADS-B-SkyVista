@@ -88,7 +88,7 @@ type LeafletModule = typeof import("leaflet");
 
 const DEFAULT_CONFIG: FlightCardConfig = {
   title: "Nearby Aircraft",
-  entity: "sensor.aircraft",
+  entity: "sensor.flight_card_aircraft",
   map_height: 420,
   default_zoom: 8,
   fit_bounds: true,
