@@ -20,39 +20,41 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    normalize_data_url,
 )
 
 
-def _data_schema(defaults: dict[str, Any]) -> vol.Schema:
+def _data_schema() -> vol.Schema:
     return vol.Schema(
         {
-            vol.Required(CONF_NAME, default=defaults[CONF_NAME]): str,
-            vol.Required(CONF_DATA_URL, default=defaults[CONF_DATA_URL]): str,
-            vol.Required(CONF_UPDATE_INTERVAL, default=defaults[CONF_UPDATE_INTERVAL]): vol.All(
+            vol.Required(CONF_NAME): str,
+            vol.Required(CONF_DATA_URL): str,
+            vol.Required(CONF_UPDATE_INTERVAL): vol.All(
                 vol.Coerce(int),
                 vol.Range(min=2, max=600),
             ),
-            vol.Required(CONF_MAX_AGE, default=defaults[CONF_MAX_AGE]): vol.All(
+            vol.Required(CONF_MAX_AGE): vol.All(
                 vol.Coerce(int),
                 vol.Range(min=1, max=3600),
             ),
-            vol.Required(CONF_HEXDB_ENABLED, default=defaults[CONF_HEXDB_ENABLED]): bool,
+            vol.Required(CONF_HEXDB_ENABLED): bool,
         }
     )
 
-def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
+
+def _options_schema() -> vol.Schema:
     return vol.Schema(
         {
-            vol.Required(CONF_DATA_URL, default=defaults[CONF_DATA_URL]): str,
-            vol.Required(CONF_UPDATE_INTERVAL, default=defaults[CONF_UPDATE_INTERVAL]): vol.All(
+            vol.Required(CONF_DATA_URL): str,
+            vol.Required(CONF_UPDATE_INTERVAL): vol.All(
                 vol.Coerce(int),
                 vol.Range(min=2, max=600),
             ),
-            vol.Required(CONF_MAX_AGE, default=defaults[CONF_MAX_AGE]): vol.All(
+            vol.Required(CONF_MAX_AGE): vol.All(
                 vol.Coerce(int),
                 vol.Range(min=1, max=3600),
             ),
-            vol.Required(CONF_HEXDB_ENABLED, default=defaults[CONF_HEXDB_ENABLED]): bool,
+            vol.Required(CONF_HEXDB_ENABLED): bool,
         }
     )
 
@@ -65,11 +67,14 @@ class FlightCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Handle initial user setup."""
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_NAME].strip().lower())
+            cleaned_input = dict(user_input)
+            cleaned_input[CONF_DATA_URL] = normalize_data_url(cleaned_input.get(CONF_DATA_URL))
+
+            await self.async_set_unique_id(cleaned_input[CONF_NAME].strip().lower())
             self._abort_if_unique_id_configured()
 
-            title = user_input[CONF_NAME].strip() or DEFAULT_NAME
-            return self.async_create_entry(title=title, data=user_input)
+            title = cleaned_input[CONF_NAME].strip() or DEFAULT_NAME
+            return self.async_create_entry(title=title, data=cleaned_input)
 
         defaults = {
             CONF_NAME: DEFAULT_NAME,
@@ -79,7 +84,10 @@ class FlightCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_HEXDB_ENABLED: DEFAULT_HEXDB_ENABLED,
         }
 
-        return self.async_show_form(step_id="user", data_schema=_data_schema(defaults))
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(_data_schema(), defaults),
+        )
 
     @staticmethod
     @callback
@@ -98,12 +106,16 @@ class FlightCardOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage options."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            cleaned_input = dict(user_input)
+            cleaned_input[CONF_DATA_URL] = normalize_data_url(cleaned_input.get(CONF_DATA_URL))
+            return self.async_create_entry(title="", data=cleaned_input)
 
         defaults = {
-            CONF_DATA_URL: self._config_entry.options.get(
-                CONF_DATA_URL,
-                self._config_entry.data.get(CONF_DATA_URL, DEFAULT_DATA_URL),
+            CONF_DATA_URL: normalize_data_url(
+                self._config_entry.options.get(
+                    CONF_DATA_URL,
+                    self._config_entry.data.get(CONF_DATA_URL, DEFAULT_DATA_URL),
+                )
             ),
             CONF_UPDATE_INTERVAL: self._config_entry.options.get(
                 CONF_UPDATE_INTERVAL,
@@ -119,4 +131,7 @@ class FlightCardOptionsFlow(config_entries.OptionsFlow):
             ),
         }
 
-        return self.async_show_form(step_id="init", data_schema=_options_schema(defaults))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(_options_schema(), defaults),
+        )

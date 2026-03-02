@@ -28,6 +28,7 @@ from .const import (
     HEXDB_IMAGE_THUMB_ENDPOINT,
     HEXDB_LOOKUP_ENDPOINT,
     MAX_HEXDB_LOOKUPS_PER_UPDATE,
+    normalize_data_url,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class FlightCardDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @property
     def data_url(self) -> str:
-        return str(self._option_value(CONF_DATA_URL, DEFAULT_DATA_URL)).strip()
+        return normalize_data_url(self._option_value(CONF_DATA_URL, DEFAULT_DATA_URL))
 
     @property
     def max_age(self) -> int:
