@@ -29,6 +29,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Flight Card from a config entry."""
+    await _async_setup_frontend(hass)
+
     coordinator = FlightCardDataUpdateCoordinator(hass=hass, entry=entry)
     await coordinator.async_config_entry_first_refresh()
 
