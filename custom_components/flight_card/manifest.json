@@ -3,11 +3,11 @@
   "name": "Flight Card",
   "codeowners": ["@aplittlecub"],
   "config_flow": true,
+  "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/aplittlecub/Flight-Card",
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/aplittlecub/Flight-Card/issues",
-  "dependencies": ["frontend", "http"],
   "requirements": [],
   "version": "0.3.1"
 }
