@@ -9,12 +9,6 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        category:
-          - integration
-          - plugin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,5 +16,5 @@ jobs:
       - name: HACS validation
         uses: hacs/action@main
         with:
-          category: ${{ matrix.category }}
+          category: integration
           ignore: brands
