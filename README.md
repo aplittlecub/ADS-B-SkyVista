@@ -44,7 +44,8 @@ This integration now auto-serves and auto-loads the card JavaScript from:
 ```yaml
 type: custom:flight-card
 title: Nearby Aircraft
-entity: sensor.flight_card_aircraft
+# optional: card will auto-detect a compatible Flight Card sensor
+# entity: sensor.aircraft
 map_height: 420
 default_zoom: 8
 fit_bounds: true
@@ -55,7 +56,7 @@ fit_bounds: true
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `title` | string | `Nearby Aircraft` | Card title |
-| `entity` | string | `sensor.flight_card_aircraft` | Sensor created by the Flight Card integration |
+| `entity` | string | auto-detect | Optional sensor entity created by the Flight Card integration |
 | `map_height` | number | `420` | Map height in px |
 | `default_zoom` | number | `8` | Initial zoom |
 | `fit_bounds` | boolean | `true` | Auto-fit map to aircraft once per load |

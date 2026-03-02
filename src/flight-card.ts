@@ -88,7 +88,7 @@ type LeafletModule = typeof import("leaflet");
 
 const DEFAULT_CONFIG: FlightCardConfig = {
   title: "Nearby Aircraft",
-  entity: "sensor.flight_card_aircraft",
+  entity: "",
   map_height: 420,
   default_zoom: 8,
   fit_bounds: true,
@@ -132,7 +132,6 @@ class FlightCard extends HTMLElement {
   static getStubConfig(): Partial<FlightCardConfig> {
     return {
       title: DEFAULT_CONFIG.title,
-      entity: DEFAULT_CONFIG.entity,
     };
   }
 
@@ -140,7 +139,7 @@ class FlightCard extends HTMLElement {
     return {
       schema: [
         { name: "title", selector: { text: {} } },
-        { name: "entity", required: true, selector: { entity: { domain: "sensor" } } },
+        { name: "entity", selector: { entity: { domain: "sensor" } } },
         {
           type: "grid",
           name: "",
@@ -512,7 +511,11 @@ class FlightCard extends HTMLElement {
       if (this._els.updated) {
         this._els.updated.textContent = "Updated: never";
       }
-      this._setStatus("error", `Entity not found: ${this._config.entity}`);
+      const configured = this._config.entity.trim();
+      this._setStatus(
+        configured ? "error" : "idle",
+        configured ? `Entity not found: ${configured}` : "Select Aircraft entity"
+      );
       this._latestGeoJson = EMPTY_COLLECTION;
       this._renderGeoJson(this._latestGeoJson);
       return;
@@ -741,7 +744,7 @@ function normalizeConfig(config: Partial<FlightCardConfig> & Record<string, unkn
   };
 
   merged.title = String(merged.title || DEFAULT_CONFIG.title);
-  merged.entity = String(merged.entity || DEFAULT_CONFIG.entity).trim();
+  merged.entity = String(merged.entity ?? "").trim();
   merged.map_height = clampNumber(merged.map_height, 200, 1200, DEFAULT_CONFIG.map_height);
   merged.default_zoom = clampNumber(merged.default_zoom, 1, 18, DEFAULT_CONFIG.default_zoom);
   merged.fit_bounds = merged.fit_bounds !== false;
@@ -765,10 +768,6 @@ function normalizeConfig(config: Partial<FlightCardConfig> & Record<string, unkn
 
   merged.tile_url = String(merged.tile_url || DEFAULT_CONFIG.tile_url);
   merged.attribution = String(merged.attribution || DEFAULT_CONFIG.attribution);
-
-  if (!merged.entity) {
-    throw new Error("Please set entity in card configuration");
-  }
 
   return merged;
 }
