@@ -1,13 +1,13 @@
-# ADS-B Nearby Aircraft
+# ADS-B SkyVista
 
-ADS-B Nearby Aircraft is a Home Assistant solution for showing live nearby aircraft on a Lovelace map.
+ADS-B SkyVista is a Home Assistant solution for showing live aircraft on a Lovelace map.
 
 It includes:
 
 - a backend integration (`flight_card`) that polls SkyAware and enriches data with HexDB
 - a Lovelace custom card (`custom:flight-card`) that renders aircraft on the map
 
-![ADS-B Nearby Aircraft preview](docs/preview.svg)
+![ADS-B SkyVista preview](docs/preview.svg)
 
 ## Requirements
 
@@ -18,9 +18,9 @@ It includes:
 ## Install (HACS - Recommended)
 
 1. Add `https://github.com/aplittlecub/Flight-Card` as an **Integration** custom repository.
-2. Install **ADS-B Nearby Aircraft** (Integration) in HACS.
+2. Install **ADS-B SkyVista** (Integration) in HACS.
 3. Restart Home Assistant.
-4. Go to **Settings -> Devices & Services -> Add Integration** and add **ADS-B Nearby Aircraft**.
+4. Go to **Settings -> Devices & Services -> Add Integration** and add **ADS-B SkyVista**.
 5. Hard refresh the browser once (`Shift+Reload`) so Home Assistant picks up the auto-registered card module.
 
 This integration now auto-serves and auto-loads the card JavaScript from:
@@ -30,7 +30,7 @@ This integration now auto-serves and auto-loads the card JavaScript from:
 ## Configure Integration
 
 1. Go to **Settings -> Devices & Services -> Add Integration**.
-2. Search for **ADS-B Nearby Aircraft**.
+2. Search for **ADS-B SkyVista**.
 3. Configure:
    - `Data URL` (example: `http://your-skyaware-host/skyaware/data/aircraft.json`)
    - `Update interval (seconds)`
@@ -39,15 +39,15 @@ This integration now auto-serves and auto-loads the card JavaScript from:
 4. Finish setup.
 5. Confirm the sensor exists in **Developer Tools -> States** (usually `sensor.flight_card_aircraft`).
 
-To change `Data URL` later, use **Devices & Services -> ADS-B Nearby Aircraft -> Reconfigure**.
+To change `Data URL` later, use **Devices & Services -> ADS-B SkyVista -> Reconfigure**.
 Use **Configure** (options) for polling and enrichment settings.
 
 ## Add Card to Dashboard
 
 ```yaml
 type: custom:flight-card
-title: ADS-B Nearby Aircraft
-# optional: card will auto-detect a compatible ADS-B Nearby Aircraft sensor
+title: ADS-B SkyVista
+# optional: card will auto-detect a compatible ADS-B SkyVista sensor
 # entity: sensor.aircraft
 map_height: 420
 default_zoom: 8
@@ -58,8 +58,8 @@ fit_bounds: true
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | string | `ADS-B Nearby Aircraft` | Card title |
-| `entity` | string | auto-detect | Optional sensor entity created by the ADS-B Nearby Aircraft integration |
+| `title` | string | `ADS-B SkyVista` | Card title |
+| `entity` | string | auto-detect | Optional sensor entity created by the ADS-B SkyVista integration |
 | `map_height` | number | `420` | Map height in px |
 | `default_zoom` | number | `8` | Initial zoom |
 | `fit_bounds` | boolean | `true` | Auto-fit map to aircraft once per load |
@@ -142,7 +142,7 @@ If you are not using HACS:
 
 ## Licensing & Attribution (Final Published - v0.3.2)
 
-ADS-B Nearby Aircraft source code is published under **MIT** (see [`LICENSE`](LICENSE)).
+ADS-B SkyVista source code is published under **MIT** (see [`LICENSE`](LICENSE)).
 
 Third-party assets/services used by this release:
 

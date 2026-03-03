@@ -1,4 +1,4 @@
-"""Constants for the ADS-B Nearby Aircraft integration."""
+"""Constants for the ADS-B SkyVista integration."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ CONF_UPDATE_INTERVAL = "update_interval"
 CONF_MAX_AGE = "max_age"
 CONF_HEXDB_ENABLED = "hexdb_enabled"
 
-DEFAULT_NAME = "ADS-B Nearby Aircraft"
+DEFAULT_NAME = "ADS-B SkyVista"
 DEMO_DATA_URL = "http://your-skyaware-host/skyaware/data/aircraft.json"
 DEFAULT_UPDATE_INTERVAL = 10
 DEFAULT_MAX_AGE = 60

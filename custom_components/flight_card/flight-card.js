@@ -70,7 +70,7 @@ const ln = "data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c
   { altitudeFt: 3e4, color: [86, 140, 242] },
   { altitudeFt: 4e4, color: [224, 82, 248] }
 ], y2 = {
-  title: "ADS-B Nearby Aircraft",
+  title: "ADS-B SkyVista",
   entity: "",
   map_height: 420,
   default_zoom: 8,
@@ -676,15 +676,15 @@ function ao() {
 function ho() {
   window.customCards = window.customCards || [], window.customCards.find((d) => d.type === b0) || window.customCards.push({
     type: b0,
-    name: "ADS-B Nearby Aircraft",
-    description: "Display aircraft from the ADS-B Nearby Aircraft integration sensor on a live map.",
+    name: "ADS-B SkyVista",
+    description: "Display aircraft from the ADS-B SkyVista integration sensor on a live map.",
     documentationURL: "https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/"
   });
 }
 customElements.get(b0) || customElements.define(b0, Jn);
 ho();
 console.info(
-  `%c ADS-B NEARBY AIRCRAFT %c ${Yn} `,
+  `%c ADS-B SKYVISTA %c ${Yn} `,
   "color: white; background: #3b82f6; font-weight: 700;",
   "color: #3b82f6; background: white; font-weight: 700;"
 );

@@ -34,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class FlightCardDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Manage polling and enrichment for ADS-B Nearby Aircraft data."""
+    """Manage polling and enrichment for ADS-B SkyVista data."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""

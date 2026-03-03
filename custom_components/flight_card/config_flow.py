@@ -1,4 +1,4 @@
-"""Config flow for ADS-B Nearby Aircraft integration."""
+"""Config flow for ADS-B SkyVista integration."""
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def _validate_data_url(url: str) -> str | None:
 
 
 class FlightCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for ADS-B Nearby Aircraft."""
+    """Handle a config flow for ADS-B SkyVista."""
 
     VERSION = 1
 
@@ -169,7 +169,7 @@ class FlightCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FlightCardOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for ADS-B Nearby Aircraft."""
+    """Handle options flow for ADS-B SkyVista."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""

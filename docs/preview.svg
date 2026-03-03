@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="ADS-B Nearby Aircraft preview">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="ADS-B SkyVista preview">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0f172a" />
@@ -11,7 +11,7 @@
   </defs>
   <rect width="1200" height="630" fill="url(#bg)" />
   <rect x="110" y="90" width="980" height="450" rx="22" fill="#f8fafc" opacity="0.96" />
-  <text x="150" y="160" fill="#111827" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="700">ADS-B Nearby Aircraft</text>
+  <text x="150" y="160" fill="#111827" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="700">ADS-B SkyVista</text>
   <text x="150" y="205" fill="#4b5563" font-family="Segoe UI, Arial, sans-serif" font-size="24">Home Assistant custom card + backend integration</text>
   <rect x="150" y="235" width="900" height="265" rx="14" fill="url(#map)" stroke="#cbd5e1" />
   <g fill="#0f172a" opacity="0.9">

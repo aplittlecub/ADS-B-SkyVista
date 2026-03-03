@@ -87,7 +87,7 @@ type FlightCollection = FeatureCollection<Point, FlightFeatureProperties>;
 type LeafletModule = typeof import("leaflet");
 
 const DEFAULT_CONFIG: FlightCardConfig = {
-  title: "ADS-B Nearby Aircraft",
+  title: "ADS-B SkyVista",
   entity: "",
   map_height: 420,
   default_zoom: 8,
@@ -1150,8 +1150,8 @@ function registerCustomCard(): void {
   if (!window.customCards.find((card) => card.type === CARD_TYPE)) {
     window.customCards.push({
       type: CARD_TYPE,
-      name: "ADS-B Nearby Aircraft",
-      description: "Display aircraft from the ADS-B Nearby Aircraft integration sensor on a live map.",
+      name: "ADS-B SkyVista",
+      description: "Display aircraft from the ADS-B SkyVista integration sensor on a live map.",
       documentationURL: "https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/",
     });
   }
@@ -1164,7 +1164,7 @@ if (!customElements.get(CARD_TYPE)) {
 registerCustomCard();
 
 console.info(
-  `%c ADS-B NEARBY AIRCRAFT %c ${CARD_VERSION} `,
+  `%c ADS-B SKYVISTA %c ${CARD_VERSION} `,
   "color: white; background: #3b82f6; font-weight: 700;",
   "color: #3b82f6; background: white; font-weight: 700;"
 );

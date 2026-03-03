@@ -9,7 +9,7 @@
     },
     "step": {
       "user": {
-        "title": "Set up ADS-B Nearby Aircraft",
+        "title": "Set up ADS-B SkyVista",
         "description": "Configure the aircraft data source and polling behavior. Example URL: http://your-skyaware-host/skyaware/data/aircraft.json",
         "data": {
           "name": "Name",
@@ -27,7 +27,7 @@
         }
       },
       "reconfigure": {
-        "title": "ADS-B Nearby Aircraft",
+        "title": "ADS-B SkyVista",
         "description": "Update the required data source URL.",
         "data": {
           "data_url": "Data URL"
@@ -41,7 +41,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "ADS-B Nearby Aircraft options",
+        "title": "ADS-B SkyVista options",
         "description": "Adjust update behavior and enrichment options.",
         "data": {
           "update_interval": "Update interval (seconds)",

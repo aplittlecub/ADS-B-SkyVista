@@ -1,6 +1,6 @@
 {
   "domain": "flight_card",
-  "name": "ADS-B Nearby Aircraft",
+  "name": "ADS-B SkyVista",
   "codeowners": ["@aplittlecub"],
   "config_flow": true,
   "dependencies": ["frontend", "http"],

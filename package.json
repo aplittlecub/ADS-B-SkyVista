@@ -1,7 +1,7 @@
 {
-  "name": "adsb-nearby-aircraft",
+  "name": "adsb-skyvista",
   "version": "0.3.2",
-  "description": "Home Assistant integration and Lovelace card for ADS-B nearby aircraft mapping.",
+  "description": "Home Assistant integration and Lovelace card for ADS-B SkyVista mapping.",
   "type": "module",
   "license": "MIT",
   "scripts": {

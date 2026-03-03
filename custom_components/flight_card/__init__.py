@@ -1,4 +1,4 @@
-"""ADS-B Nearby Aircraft integration."""
+"""ADS-B SkyVista integration."""
 
 from __future__ import annotations
 
@@ -22,13 +22,13 @@ DATA_FRONTEND_REGISTERED = "_frontend_registered"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up ADS-B Nearby Aircraft integration."""
+    """Set up ADS-B SkyVista integration."""
     await _async_setup_frontend(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up ADS-B Nearby Aircraft from a config entry."""
+    """Set up ADS-B SkyVista from a config entry."""
     await _async_setup_frontend(hass)
 
     coordinator = FlightCardDataUpdateCoordinator(hass=hass, entry=entry)
@@ -57,7 +57,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_setup_frontend(hass: HomeAssistant) -> None:
-    """Register and auto-load the ADS-B Nearby Aircraft frontend module."""
+    """Register and auto-load the ADS-B SkyVista frontend module."""
     domain_data = hass.data.setdefault(DOMAIN, {})
 
     if domain_data.get(DATA_FRONTEND_REGISTERED):
@@ -65,7 +65,7 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
 
     if not CARD_JS_FILE.is_file():
         _LOGGER.warning(
-            "ADS-B Nearby Aircraft card module missing at %s; custom:flight-card will be unavailable",
+            "ADS-B SkyVista card module missing at %s; custom:flight-card will be unavailable",
             CARD_JS_FILE,
         )
         return
