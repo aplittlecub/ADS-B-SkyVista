@@ -21,44 +21,49 @@ It includes:
 - A reachable SkyAware endpoint (for example `http://your-skyaware-host/skyaware/data/aircraft.json`)
 - HACS (recommended)
 
-## Install (HACS - Recommended)
+## 1. Install with HACS
 
-1. Add `https://github.com/aplittlecub/Flight-Card` as an **Integration** custom repository.
-2. Install **ADS-B SkyVista** (Integration) in HACS.
+ADS-B SkyVista is available in the [default HACS integration list](https://github.com/hacs/default/blob/master/integration). It is a **Home Assistant integration**, not a Supervisor add-on: do not add this repository under **Manage add-on repositories** in the add-on/app store.
+
+If HACS is not installed yet, follow the [official HACS setup guide](https://hacs.xyz/docs/use/) first.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aplittlecub&repository=ADS-B-SkyVista&category=integration)
+
+1. Click the button above, or open **HACS** in the Home Assistant sidebar and search for **ADS-B SkyVista**. Its repository type is **Integration**.
+2. Open **ADS-B SkyVista** and select **Download**, then confirm the download in HACS.
 3. Restart Home Assistant.
-4. Go to **Settings -> Devices & Services -> Add Integration** and add **ADS-B SkyVista**.
-5. Hard refresh the browser once (`Shift+Reload`) so Home Assistant picks up the auto-registered card module.
 
-This integration now auto-serves and auto-loads the card JavaScript from:
+The button uses My Home Assistant; set your Home Assistant instance URL there if prompted. It opens the HACS repository page, where you still need to select **Download**. If the button does not work, use the sidebar/search steps above.
 
-- `/flight_card/flight-card.js`
+## 2. Configure SkyVista
 
-## Configure Integration
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=flight_card)
 
-1. Go to **Settings -> Devices & Services -> Add Integration**.
-2. Search for **ADS-B SkyVista**.
-3. Configure:
-   - `Data URL` (example: `http://your-skyaware-host/skyaware/data/aircraft.json`)
+1. After downloading and restarting, click the button above, or go to **Settings -> Devices & Services -> Add Integration** and search for **ADS-B SkyVista**.
+2. Configure:
+   - `Name`
+   - `Data URL`: your actual SkyAware `aircraft.json` URL, reachable from Home Assistant (example: `http://your-skyaware-host/skyaware/data/aircraft.json`; replace the example host)
    - `Update interval (seconds)`
    - `Max aircraft age (seconds)`
    - `Enable HexDB enrichment`
-4. Finish setup.
-5. Confirm the sensor exists in **Developer Tools -> States** (usually `sensor.flight_card_aircraft`).
+3. Finish setup.
+4. Confirm the **Aircraft** sensor exists in **Developer Tools -> States**. Use its actual entity ID if configuring the card's optional `entity` setting; the sensor has a `source_domain: flight_card` attribute.
 
 To change `Data URL` later, use **Devices & Services -> ADS-B SkyVista -> Reconfigure**.
 Use **Configure** (options) for polling and enrichment settings.
 
-## Add Card to Dashboard
+## 3. Add the dashboard card
+
+1. Hard refresh the browser once (`Shift+Reload`) after adding the integration.
+2. Open your dashboard and select **Edit dashboard -> Add card -> Manual**.
+3. Paste the following YAML and save:
 
 ```yaml
 type: custom:flight-card
 title: ADS-B SkyVista
-# optional: card will auto-detect a compatible ADS-B SkyVista sensor
-# entity: sensor.aircraft
-map_height: 420
-default_zoom: 8
-fit_bounds: true
 ```
+
+The integration includes and automatically loads the card, so you do not need a separate HACS dashboard/card repository or a manually added dashboard resource. The card auto-detects a compatible SkyVista sensor; optionally set `entity:` to its actual entity ID. See [Card Options](#card-options) for map height, zoom, and other settings.
 
 ## Card Options
 
@@ -131,20 +136,32 @@ Matching order matters: first match wins in `iconFromTypeToken`.
 
 ## Troubleshooting
 
+- If adding the repository shows an add-on/app repository error, use **HACS** in the sidebar instead of **Manage add-on repositories**. Follow [1. Install with HACS](#1-install-with-hacs).
 - If the card says `Entity not found`, set `entity:` to the exact sensor ID from Developer Tools.
 - If the card does not appear in card picker, hard refresh browser (`Shift+Reload`) after restarting Home Assistant.
 - If the map is empty but sensor has data, confirm the module URL returns `200`: `http://<HA_HOST>:8123/flight_card/flight-card.js`.
 - If the integration does not appear, restart Home Assistant after installation.
 - If the sensor is unavailable, verify Home Assistant can reach your `data_url`.
 
-## Manual / Local Install
+### If ADS-B SkyVista is missing from HACS search
+
+Clear any HACS filters that hide available integrations and try the button in [1. Install with HACS](#1-install-with-hacs). A custom repository is normally unnecessary because ADS-B SkyVista is in the default list. If it is still missing, use the [HACS custom repository fallback](https://hacs.xyz/docs/faq/custom_repositories/):
+
+1. Open **HACS** in the sidebar, select the **three-dot menu -> Custom repositories**.
+2. Enter `https://github.com/aplittlecub/ADS-B-SkyVista` and select type **Integration**.
+3. Select **Add**, then search for **ADS-B SkyVista** and continue from step 2 of [1. Install with HACS](#1-install-with-hacs).
+
+<details>
+<summary>Manual / local installation without HACS</summary>
 
 If you are not using HACS:
 
-1. Copy `custom_components/flight_card` into your Home Assistant config folder (`/config/custom_components/flight_card`).
+1. Download and extract this repository from [GitHub](https://github.com/aplittlecub/ADS-B-SkyVista), then copy the entire `custom_components/flight_card` folder (including `flight-card.js`) into your Home Assistant configuration directory (`/config/custom_components/flight_card` on Home Assistant OS).
 2. Restart Home Assistant.
-3. Add the integration in **Settings -> Devices & Services**.
-4. Hard refresh the browser (`Shift+Reload`).
+3. Follow [2. Configure SkyVista](#2-configure-skyvista) to add **ADS-B SkyVista** in **Settings -> Devices & Services**.
+4. Follow [3. Add the dashboard card](#3-add-the-dashboard-card), including the browser refresh. The bundled card is automatically loaded with this installation method too.
+
+</details>
 
 ## Licensing & Attribution (Final Published - v0.3.2)
 
