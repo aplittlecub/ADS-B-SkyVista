@@ -1,6 +1,7 @@
 node_modules/
 dist/*
 !dist/flight-card.js
+!dist/flight-card.js.map
 .DS_Store
 local-ha/
 __pycache__/
