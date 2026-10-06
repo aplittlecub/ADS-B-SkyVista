@@ -69,7 +69,7 @@ const ln = "data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c
   { altitudeFt: 2e4, color: [94, 212, 206] },
   { altitudeFt: 3e4, color: [86, 140, 242] },
   { altitudeFt: 4e4, color: [224, 82, 248] }
-], y2 = {
+], m2 = {
   title: "ADS-B SkyVista",
   entity: "",
   map_height: 420,
@@ -77,7 +77,7 @@ const ln = "data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c
   fit_bounds: !0,
   center_lat: null,
   center_lon: null,
-  tile_url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  tile_url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
 }, dt = {
   type: "FeatureCollection",
@@ -85,11 +85,11 @@ const ln = "data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c
 };
 class Jn extends HTMLElement {
   constructor() {
-    super(...arguments), this._config = { ...y2 }, this._resizeFixTimeouts = [], this._hasAutofit = !1, this._latestGeoJson = dt, this._lastRenderedFingerprint = "", this._resolvedEntityId = "", this._els = {};
+    super(...arguments), this._config = { ...m2 }, this._resizeFixTimeouts = [], this._hasAutofit = !1, this._latestGeoJson = dt, this._lastRenderedFingerprint = "", this._resolvedEntityId = "", this._els = {};
   }
   static getStubConfig() {
     return {
-      title: y2.title
+      title: m2.title
     };
   }
   static getConfigForm() {
@@ -363,7 +363,10 @@ class Jn extends HTMLElement {
             attribution: this._config.attribution,
             maxZoom: 19,
             updateWhenIdle: !0,
-            keepBuffer: 4
+            keepBuffer: 4,
+            // OSM requires a Referer even when HA's page policy suppresses it.
+            // Leave custom providers' referrer and CORS behavior unchanged.
+            referrerPolicy: this._config.tile_url === m2.tile_url ? "strict-origin-when-cross-origin" : !1
           }).addTo(this._map), this._map.setView(h, this._config.default_zoom), this._aircraftLayer = r.geoJSON([], {
             pointToLayer: (m, f) => {
               const x = m?.properties;
@@ -407,8 +410,8 @@ class Jn extends HTMLElement {
     }
     const m = h.attributes?.geojson, f = I2(m) && m.type === "FeatureCollection" && Array.isArray(m.features), x = Xn(m), T = to(h.attributes?.updated ?? h.last_updated), j = `${h.state}|${String(h.attributes?.updated ?? "")}|${x.features.length}`;
     if (j !== this._lastRenderedFingerprint && (this._lastRenderedFingerprint = j, this._latestGeoJson = x, this._renderGeoJson(x)), this._els.count) {
-      const v = Number(h.state), m2 = Number.isFinite(v) ? v : x.features.length;
-      this._els.count.textContent = `Aircraft: ${Math.max(0, Math.round(m2))}`;
+      const v = Number(h.state), p2 = Number.isFinite(v) ? v : x.features.length;
+      this._els.count.textContent = `Aircraft: ${Math.max(0, Math.round(p2))}`;
     }
     if (this._els.updated && (this._els.updated.textContent = `Updated: ${T}`), h.state === "unavailable") {
       this._setStatus("error", "Entity unavailable");
@@ -495,12 +498,12 @@ function Kn(d) {
   if (!d || typeof d != "object")
     throw new Error("Invalid configuration");
   const r = {
-    ...y2,
+    ...m2,
     ...d
   };
-  r.title = String(r.title || y2.title), r.entity = String(r.entity ?? "").trim(), r.map_height = Ae(r.map_height, 200, 1200, y2.map_height), r.default_zoom = Ae(r.default_zoom, 1, 18, y2.default_zoom), r.fit_bounds = r.fit_bounds !== !1, r.center_lat = w0(r.center_lat), r.center_lon = w0(r.center_lon);
+  r.title = String(r.title || m2.title), r.entity = String(r.entity ?? "").trim(), r.map_height = Ae(r.map_height, 200, 1200, m2.map_height), r.default_zoom = Ae(r.default_zoom, 1, 18, m2.default_zoom), r.fit_bounds = r.fit_bounds !== !1, r.center_lat = w0(r.center_lat), r.center_lon = w0(r.center_lon);
   const h = d.advanced;
-  return h && typeof h == "object" && (r.center_lat = w0(h.center_lat ?? r.center_lat), r.center_lon = w0(h.center_lon ?? r.center_lon), typeof h.tile_url == "string" && h.tile_url.length > 0 && (r.tile_url = h.tile_url), typeof h.attribution == "string" && h.attribution.length > 0 && (r.attribution = h.attribution)), r.tile_url = String(r.tile_url || y2.tile_url), r.attribution = String(r.attribution || y2.attribution), r;
+  return h && typeof h == "object" && (r.center_lat = w0(h.center_lat ?? r.center_lat), r.center_lon = w0(h.center_lon ?? r.center_lon), typeof h.tile_url == "string" && h.tile_url.length > 0 && (r.tile_url = h.tile_url), typeof h.attribution == "string" && h.attribution.length > 0 && (r.attribution = h.attribution)), r.tile_url = String(r.tile_url || m2.tile_url), r.attribution = String(r.attribution || m2.attribution), r;
 }
 function w0(d) {
   if (d == null || d === "")
@@ -534,8 +537,8 @@ function Qn(d, r) {
     return typeof v == "string" && v === "flight_card";
   });
   return x ? x.entity_id : f.find((j) => {
-    const v = j.attributes, m2 = v?.geojson;
-    return I2(m2) && m2.type === "FeatureCollection" && Array.isArray(m2.features) && typeof v?.config_entry_id == "string";
+    const v = j.attributes, p2 = v?.geojson;
+    return I2(p2) && p2.type === "FeatureCollection" && Array.isArray(p2.features) && typeof v?.config_entry_id == "string";
   })?.entity_id ?? "";
 }
 function $n(d) {
@@ -751,7 +754,7 @@ var _t = { exports: {} };
     function v(t) {
       return "_leaflet_id" in t || (t._leaflet_id = ++j), t._leaflet_id;
     }
-    function m2(t, e, i) {
+    function p2(t, e, i) {
       var n, o, s, a;
       return a = function() {
         n = !1, o && (s.apply(i, o), o = !1);
@@ -838,7 +841,7 @@ var _t = { exports: {} };
         return j;
       },
       stamp: v,
-      throttle: m2,
+      throttle: p2,
       wrapNum: D2,
       falseFn: I,
       formatNum: n2,
@@ -1425,12 +1428,12 @@ var _t = { exports: {} };
       // @method distanceTo(otherLatLng: LatLng): Number
       // Returns the distance (in meters) to the given `LatLng` calculated using the [Spherical Law of Cosines](https://en.wikipedia.org/wiki/Spherical_law_of_cosines).
       distanceTo: function(t) {
-        return p2.distance(this, M(t));
+        return g2.distance(this, M(t));
       },
       // @method wrap(): LatLng
       // Returns a new `LatLng` object with the longitude wrapped so it's always between -180 and +180 degrees.
       wrap: function() {
-        return p2.wrapLatLng(this);
+        return g2.wrapLatLng(this);
       },
       // @method toBounds(sizeInMeters: Number): LatLngBounds
       // Returns a new `LatLngBounds` object in which each boundary is `sizeInMeters/2` meters apart from the `LatLng`.
@@ -1530,7 +1533,7 @@ var _t = { exports: {} };
         var s = t.getSouthWest(), a = t.getNorthEast(), l = new S(s.lat - n, s.lng - o), c = new S(a.lat - n, a.lng - o);
         return new q(l, c);
       }
-    }, p2 = f({}, c2, {
+    }, g2 = f({}, c2, {
       wrapLng: [-180, 180],
       // Mean Earth Radius, as recommended for use by
       // the International Union of Geodesy and Geophysics,
@@ -1594,7 +1597,7 @@ var _t = { exports: {} };
     function N2(t, e, i, n) {
       return new z0(t, e, i, n);
     }
-    var S0 = f({}, p2, {
+    var S0 = f({}, g2, {
       code: "EPSG:3857",
       projection: k0,
       transformation: function() {
@@ -3410,7 +3413,7 @@ var _t = { exports: {} };
     r2.addTo = function(t, e) {
       return t.addHandler(e, this), this;
     };
-    var Ci = { Events: J }, $t = p.touch ? "touchstart mousedown" : "mousedown", g2 = R2.extend({
+    var Ci = { Events: J }, $t = p.touch ? "touchstart mousedown" : "mousedown", v2 = R2.extend({
       options: {
         // @section
         // @aka Draggable options
@@ -3432,15 +3435,15 @@ var _t = { exports: {} };
       // @method disable()
       // Disables the dragging ability
       disable: function() {
-        this._enabled && (g2._dragging === this && this.finishDrag(!0), E(this._dragStartTarget, $t, this._onDown, this), this._enabled = !1, this._moved = !1);
+        this._enabled && (v2._dragging === this && this.finishDrag(!0), E(this._dragStartTarget, $t, this._onDown, this), this._enabled = !1, this._moved = !1);
       },
       _onDown: function(t) {
         if (this._enabled && (this._moved = !1, !R0(this._element, "leaflet-zoom-anim"))) {
           if (t.touches && t.touches.length !== 1) {
-            g2._dragging === this && this.finishDrag();
+            v2._dragging === this && this.finishDrag();
             return;
           }
-          if (!(g2._dragging || t.shiftKey || t.which !== 1 && t.button !== 1 && !t.touches) && (g2._dragging = this, this._preventOutline && U0(this._element), W0(), G2(), !this._moving)) {
+          if (!(v2._dragging || t.shiftKey || t.which !== 1 && t.button !== 1 && !t.touches) && (v2._dragging = this, this._preventOutline && U0(this._element), W0(), G2(), !this._moving)) {
             this.fire("down");
             var e = t.touches ? t.touches[0] : t, i = Vt(this._element);
             this._startPoint = new w(e.clientX, e.clientY), this._startPos = C2(this._element), this._parentScale = V0(i);
@@ -3469,7 +3472,7 @@ var _t = { exports: {} };
       finishDrag: function(t) {
         D(document.body, "leaflet-dragging"), this._lastTarget && (D(this._lastTarget, "leaflet-drag-target"), this._lastTarget = null), E(document, "mousemove touchmove", this._onMove, this), E(document, "mouseup touchend touchcancel", this._onUp, this), H0(), U2();
         var e = this._moved && this._moving;
-        this._moving = !1, g2._dragging = !1, e && this.fire("dragend", {
+        this._moving = !1, v2._dragging = !1, e && this.fire("dragend", {
           noInertia: t,
           distance: this._newPos.distanceTo(this._startPos)
         });
@@ -3647,14 +3650,14 @@ var _t = { exports: {} };
       LonLat: et,
       Mercator: it,
       SphericalMercator: k0
-    }, Si = f({}, p2, {
+    }, Si = f({}, g2, {
       code: "EPSG:3395",
       projection: it,
       transformation: function() {
         var t = 0.5 / (Math.PI * it.R);
         return N2(t, 0.5, -t, 0.5);
       }()
-    }), he = f({}, p2, {
+    }), he = f({}, g2, {
       code: "EPSG:4326",
       projection: et,
       transformation: N2(1 / 180, 1, -1 / 180, 0.5)
@@ -3673,7 +3676,7 @@ var _t = { exports: {} };
       },
       infinite: !0
     });
-    c2.Earth = p2, c2.EPSG3395 = Si, c2.EPSG3857 = S0, c2.EPSG900913 = De, c2.EPSG4326 = he, c2.Simple = Ai;
+    c2.Earth = g2, c2.EPSG3395 = Si, c2.EPSG3857 = S0, c2.EPSG900913 = De, c2.EPSG4326 = he, c2.Simple = Ai;
     var i2 = R2.extend({
       // Classes extending `L.Layer` will inherit the following options:
       options: {
@@ -4036,7 +4039,7 @@ var _t = { exports: {} };
       },
       addHooks: function() {
         var t = this._marker._icon;
-        this._draggable || (this._draggable = new g2(t, t, !0)), this._draggable.on({
+        this._draggable || (this._draggable = new v2(t, t, !0)), this._draggable.on({
           dragstart: this._onDragStart,
           predrag: this._onPreDrag,
           drag: this._onDrag,
@@ -4268,7 +4271,7 @@ var _t = { exports: {} };
     function Zi(t, e) {
       return new c0(t, e);
     }
-    var v2 = i2.extend({
+    var y2 = i2.extend({
       // @section
       // @aka Path options
       options: {
@@ -4354,7 +4357,7 @@ var _t = { exports: {} };
       _clickTolerance: function() {
         return (this.options.stroke ? this.options.weight / 2 : 0) + (this._renderer.options.tolerance || 0);
       }
-    }), u0 = v2.extend({
+    }), u0 = y2.extend({
       // @section
       // @aka CircleMarker options
       options: {
@@ -4389,7 +4392,7 @@ var _t = { exports: {} };
       },
       setStyle: function(t) {
         var e = t && t.radius || this._radius;
-        return v2.prototype.setStyle.call(this, t), this.setRadius(e), this;
+        return y2.prototype.setStyle.call(this, t), this.setRadius(e), this;
       },
       _project: function() {
         this._point = this._map.latLngToLayerPoint(this._latlng), this._updateBounds();
@@ -4440,11 +4443,11 @@ var _t = { exports: {} };
           this._map.layerPointToLatLng(this._point.add(t))
         );
       },
-      setStyle: v2.prototype.setStyle,
+      setStyle: y2.prototype.setStyle,
       _project: function() {
         var t = this._latlng.lng, e = this._latlng.lat, i = this._map, n = i.options.crs;
-        if (n.distance === p2.distance) {
-          var o = Math.PI / 180, s = this._mRadius / p2.R / o, a = i.project([e + s, t]), l = i.project([e - s, t]), c = a.add(l).divideBy(2), u = i.unproject(c).lat, _ = Math.acos((Math.cos(s * o) - Math.sin(e * o) * Math.sin(u * o)) / (Math.cos(e * o) * Math.cos(u * o))) / o;
+        if (n.distance === g2.distance) {
+          var o = Math.PI / 180, s = this._mRadius / g2.R / o, a = i.project([e + s, t]), l = i.project([e - s, t]), c = a.add(l).divideBy(2), u = i.unproject(c).lat, _ = Math.acos((Math.cos(s * o) - Math.sin(e * o) * Math.sin(u * o)) / (Math.cos(e * o) * Math.cos(u * o))) / o;
           (isNaN(_) || _ === 0) && (_ = s / Math.cos(Math.PI / 180 * e)), this._point = c.subtract(i.getPixelOrigin()), this._radius = isNaN(_) ? 0 : c.x - i.project([u, t - _]).x, this._radiusY = c.y - a.y;
         } else {
           var g = n.unproject(n.project(this._latlng).subtract([this._mRadius, 0]));
@@ -4456,7 +4459,7 @@ var _t = { exports: {} };
     function Di(t, e, i) {
       return new nt(t, e, i);
     }
-    var f2 = v2.extend({
+    var f2 = y2.extend({
       // @section
       // @aka Polyline options
       options: {
@@ -5273,10 +5276,10 @@ var _t = { exports: {} };
         return t = arguments.length ? t : this._source._map, !t.hasLayer(this) && t._popup && t._popup.options.autoClose && t.removeLayer(t._popup), t._popup = this, a2.prototype.openOn.call(this, t);
       },
       onAdd: function(t) {
-        a2.prototype.onAdd.call(this, t), t.fire("popupopen", { popup: this }), this._source && (this._source.fire("popupopen", { popup: this }, !0), this._source instanceof v2 || this._source.on("preclick", b2));
+        a2.prototype.onAdd.call(this, t), t.fire("popupopen", { popup: this }), this._source && (this._source.fire("popupopen", { popup: this }, !0), this._source instanceof y2 || this._source.on("preclick", b2));
       },
       onRemove: function(t) {
-        a2.prototype.onRemove.call(this, t), t.fire("popupclose", { popup: this }), this._source && (this._source.fire("popupclose", { popup: this }, !0), this._source instanceof v2 || this._source.off("preclick", b2));
+        a2.prototype.onRemove.call(this, t), t.fire("popupclose", { popup: this }), this._source && (this._source.fire("popupclose", { popup: this }, !0), this._source instanceof y2 || this._source.off("preclick", b2));
       },
       getEvents: function() {
         var t = a2.prototype.getEvents.call(this);
@@ -5397,7 +5400,7 @@ var _t = { exports: {} };
         if (!(!this._popup || !this._map)) {
           L2(t);
           var e = t.layer || t.target;
-          if (this._popup._source === e && !(e instanceof v2)) {
+          if (this._popup._source === e && !(e instanceof y2)) {
             this._map.hasLayer(this._popup) ? this.closePopup() : this.openPopup(t.latlng);
             return;
           }
@@ -5727,7 +5730,7 @@ var _t = { exports: {} };
           zoom: this._resetView,
           moveend: this._onMoveEnd
         };
-        return this.options.updateWhenIdle || (this._onMove || (this._onMove = m2(this._onMoveEnd, this.options.updateInterval, this)), t.move = this._onMove), this._zoomAnimated && (t.zoomanim = this._animateZoom), t;
+        return this.options.updateWhenIdle || (this._onMove || (this._onMove = p2(this._onMoveEnd, this.options.updateInterval, this)), t.move = this._onMove), this._zoomAnimated && (t.zoomanim = this._animateZoom), t;
       },
       // @section Extension methods
       // Layers extending `GridLayer` shall reimplement the following method.
@@ -6700,7 +6703,7 @@ var _t = { exports: {} };
       addHooks: function() {
         if (!this._draggable) {
           var t = this._map;
-          this._draggable = new g2(t._mapPane, t._container), this._draggable.on({
+          this._draggable = new v2(t._mapPane, t._container), this._draggable.on({
             dragstart: this._onDragStart,
             drag: this._onDrag,
             dragend: this._onDragEnd
@@ -7017,7 +7020,7 @@ var _t = { exports: {} };
         this._zooming = !1, K(this._animRequest), E(document, "touchmove", this._onTouchMove, this), E(document, "touchend touchcancel", this._onTouchEnd, this), this._map.options.zoomAnimation ? this._map._animateZoom(this._center, this._map._limitZoom(this._zoom), !0, this._map.options.zoomSnap) : this._map._resetView(this._center, this._map._limitZoom(this._zoom));
       }
     });
-    k.addInitHook("addHandler", "touchZoom", Me), k.BoxZoom = we, k.DoubleClickZoom = Ce, k.Drag = be, k.Keyboard = Le, k.ScrollWheelZoom = Pe, k.TapHold = Te, k.TouchZoom = Me, h.Bounds = B, h.Browser = p, h.CRS = c2, h.Canvas = ge, h.Circle = nt, h.CircleMarker = u0, h.Class = l2, h.Control = e2, h.DivIcon = _e, h.DivOverlay = a2, h.DomEvent = mi, h.DomUtil = di, h.Draggable = g2, h.Evented = R2, h.FeatureGroup = u2, h.GeoJSON = d2, h.GridLayer = K2, h.Handler = r2, h.Icon = A2, h.ImageOverlay = p0, h.LatLng = S, h.LatLngBounds = q, h.Layer = i2, h.LayerGroup = S2, h.LineUtil = ki, h.Map = k, h.Marker = c0, h.Mixin = Ci, h.Path = v2, h.Point = w, h.PolyUtil = bi, h.Polygon = E2, h.Polyline = f2, h.Popup = g0, h.PosAnimation = Kt, h.Projection = zi, h.Rectangle = xe, h.Renderer = _2, h.SVG = Q2, h.SVGOverlay = de, h.TileLayer = B2, h.Tooltip = v0, h.Transformation = z0, h.Util = Ze, h.VideoOverlay = fe, h.bind = T, h.bounds = V, h.canvas = ve, h.circle = Di, h.circleMarker = Ii, h.control = Y2, h.divIcon = qi, h.extend = f, h.featureGroup = Oi, h.geoJSON = ue, h.geoJson = Fi, h.gridLayer = Yi, h.icon = Bi, h.imageOverlay = Wi, h.latLng = M, h.latLngBounds = R, h.layerGroup = Ei, h.map = pi, h.marker = Zi, h.point = y, h.polygon = Ni, h.polyline = Ri, h.popup = Ui, h.rectangle = Ki, h.setOptions = O, h.stamp = v, h.svg = ye, h.svgOverlay = Gi, h.tileLayer = me, h.tooltip = Vi, h.transformation = N2, h.version = m, h.videoOverlay = Hi;
+    k.addInitHook("addHandler", "touchZoom", Me), k.BoxZoom = we, k.DoubleClickZoom = Ce, k.Drag = be, k.Keyboard = Le, k.ScrollWheelZoom = Pe, k.TapHold = Te, k.TouchZoom = Me, h.Bounds = B, h.Browser = p, h.CRS = c2, h.Canvas = ge, h.Circle = nt, h.CircleMarker = u0, h.Class = l2, h.Control = e2, h.DivIcon = _e, h.DivOverlay = a2, h.DomEvent = mi, h.DomUtil = di, h.Draggable = v2, h.Evented = R2, h.FeatureGroup = u2, h.GeoJSON = d2, h.GridLayer = K2, h.Handler = r2, h.Icon = A2, h.ImageOverlay = p0, h.LatLng = S, h.LatLngBounds = q, h.Layer = i2, h.LayerGroup = S2, h.LineUtil = ki, h.Map = k, h.Marker = c0, h.Mixin = Ci, h.Path = y2, h.Point = w, h.PolyUtil = bi, h.Polygon = E2, h.Polyline = f2, h.Popup = g0, h.PosAnimation = Kt, h.Projection = zi, h.Rectangle = xe, h.Renderer = _2, h.SVG = Q2, h.SVGOverlay = de, h.TileLayer = B2, h.Tooltip = v0, h.Transformation = z0, h.Util = Ze, h.VideoOverlay = fe, h.bind = T, h.bounds = V, h.canvas = ve, h.circle = Di, h.circleMarker = Ii, h.control = Y2, h.divIcon = qi, h.extend = f, h.featureGroup = Oi, h.geoJSON = ue, h.geoJson = Fi, h.gridLayer = Yi, h.icon = Bi, h.imageOverlay = Wi, h.latLng = M, h.latLngBounds = R, h.layerGroup = Ei, h.map = pi, h.marker = Zi, h.point = y, h.polygon = Ni, h.polyline = Ri, h.popup = Ui, h.rectangle = Ki, h.setOptions = O, h.stamp = v, h.svg = ye, h.svgOverlay = Gi, h.tileLayer = me, h.tooltip = Vi, h.transformation = N2, h.version = m, h.videoOverlay = Hi;
     var Qi = window.L;
     h.noConflict = function() {
       return window.L = Qi, this;

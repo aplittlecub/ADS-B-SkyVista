@@ -1,6 +1,22 @@
 import { defineConfig } from "vite";
+import { copyFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  plugins: mode === "verify" ? [] : [
+    {
+      name: "sync-card-package",
+      async writeBundle(output) {
+        // Runs after each completed build, including build:watch.
+        for (const name of ["flight-card.js", "flight-card.js.map"]) {
+          await copyFile(
+            resolve(output.dir!, name),
+            resolve("custom_components/flight_card", name),
+          );
+        }
+      },
+    },
+  ],
   build: {
     target: "es2022",
     sourcemap: true,
@@ -14,7 +30,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         inlineDynamicImports: true,
+        // Stable paths even when verification builds into a temporary directory.
+        sourcemapPathTransform: (source, mapPath) =>
+          `../${relative(process.cwd(), resolve(dirname(mapPath), source)).replace(/\\/g, "/")}`,
       },
     },
   },
-});
+}));

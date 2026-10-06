@@ -1,0 +1,5 @@
+# Keep embedded source-map content reproducible across Windows and Linux builds.
+src/flight-card.ts text eol=lf
+dist/flight-card.js text eol=lf
+custom_components/flight_card/flight-card.js text eol=lf
+custom_components/flight_card/flight-card.js.map text eol=lf

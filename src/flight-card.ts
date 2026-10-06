@@ -94,7 +94,7 @@ const DEFAULT_CONFIG: FlightCardConfig = {
   fit_bounds: true,
   center_lat: null,
   center_lon: null,
-  tile_url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  tile_url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>",
 };
 
@@ -477,8 +477,11 @@ class FlightCard extends HTMLElement {
           maxZoom: 19,
           updateWhenIdle: true,
           keepBuffer: 4,
-          crossOrigin: "anonymous",
-          referrerPolicy: "origin",
+          // OSM requires a Referer even when HA's page policy suppresses it.
+          // Leave custom providers' referrer and CORS behavior unchanged.
+          referrerPolicy: this._config.tile_url === DEFAULT_CONFIG.tile_url
+            ? "strict-origin-when-cross-origin"
+            : false,
         }).addTo(this._map);
 
         this._map.setView(center, this._config.default_zoom);
