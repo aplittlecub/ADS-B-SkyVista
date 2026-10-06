@@ -192,9 +192,33 @@ Aircraft metadata and airframe image lookup by HexDB - https://hexdb.io
 - Local test stack: `docker compose -f docker-compose.home-assistant.yml up -d`
 - Dev container setup is included in `.devcontainer/`
 - Build commands:
+  - `npm ci`
   - `npm run check`
   - `npm run build`
   - `npm run build:watch`
+
+Both build commands synchronize `flight-card.js` and its source map from `dist/` into
+`custom_components/flight_card/`, the package installed by HACS. Commit the rebuilt
+files with source changes. `npm run check:bundle` compares both destinations with a
+fresh build without overwriting them and fails on stale or missing artifacts.
+
+Regression checks: `npm run test:package`, then `npx playwright install chromium`
+and `npm run test:frontend`. To use an existing Chromium browser, set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable. Browser tests use synthetic
+HA state and tile responses and never contact tile providers. The backend tests use
+Python 3.14: install `tests/requirements.txt` in an isolated environment, then run
+`python -m unittest discover -s tests -p 'test_*.py' -v`. They exercise actual HA
+entity exclusion metadata and Recorder serialization/SQLite models, with a synthetic
+coordinator and events; they do not start a Recorder worker or validate a live HA server.
+
+The sensor keeps GeoJSON in live state for the map but excludes it from Recorder;
+aircraft-count states and small attributes remain available in history.
+
+If `custom:flight-card` does not register after restarting HA and refreshing the
+dashboard, collect the first browser console error, the SkyVista version banner,
+and the status/body of `/flight_card/flight-card.js`. Include HA/SkyVista/browser
+versions and whether a private window reproduces it. A successful download alone
+does not prove the module executed. See [issue 2](https://github.com/aplittlecub/ADS-B-SkyVista/issues/2).
 
 ## References
 

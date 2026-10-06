@@ -1,7 +1,11 @@
 node_modules/
 dist/*
 !dist/flight-card.js
+!dist/flight-card.js.map
 .DS_Store
 local-ha/
 __pycache__/
 *.pyc
+test-results/
+playwright-report/
+artifacts/

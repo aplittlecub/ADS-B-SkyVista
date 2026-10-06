@@ -32,6 +32,8 @@ class FlightCardAircraftSensor(
     _attr_has_entity_name = True
     _attr_name = "Aircraft"
     _attr_icon = "mdi:airplane"
+    # Keep the live map payload in HA state, without storing it in history.
+    _unrecorded_attributes = frozenset({"geojson"})
 
     def __init__(self, coordinator: FlightCardDataUpdateCoordinator, entry: ConfigEntry) -> None:
         """Initialize sensor."""
