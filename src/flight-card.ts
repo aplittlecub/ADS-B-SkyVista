@@ -38,6 +38,7 @@ interface HassEntity {
 }
 
 interface HomeAssistant {
+  themes?: { darkMode?: boolean };
   states?: Record<string, HassEntity>;
   config?: {
     latitude?: number;
@@ -179,6 +180,12 @@ class FlightCard extends HTMLElement {
 
   set hass(hass: HomeAssistant) {
     this._hass = hass;
+    // HA supplies the active mode; inherited theme colours update open popups too.
+    if (typeof hass.themes?.darkMode === "boolean") {
+      this.dataset.popupTheme = hass.themes.darkMode ? "dark" : "light";
+    } else {
+      delete this.dataset.popupTheme;
+    }
 
     if (this._map && !this._hasConfiguredCenter() && this._latestGeoJson.features.length === 0) {
       const center = this._resolveInitialCenter();
@@ -329,6 +336,7 @@ class FlightCard extends HTMLElement {
           z-index: 0;
           isolation: isolate;
           contain: layout paint;
+          container-type: inline-size;
           width: 100%;
           border-radius: 12px;
           overflow: hidden;
@@ -396,19 +404,113 @@ class FlightCard extends HTMLElement {
           border: 2px solid rgba(15, 23, 42, 0.65);
         }
 
-        .flight-card__popup {
+        .flight-card__leaflet-popup {
+          --popup-fallback-bg: #ffffff;
+          --popup-fallback-text: #172b3a;
+          --popup-fallback-muted: #526775;
+          --popup-fallback-border: #dce5eb;
+          --popup-bg: var(--ha-card-background, var(--card-background-color, var(--popup-fallback-bg)));
+          --popup-text: var(--primary-text-color, var(--popup-fallback-text));
+          --popup-muted: var(--secondary-text-color, var(--popup-fallback-muted));
+          --popup-border: var(--divider-color, var(--popup-fallback-border));
+          font-family: var(--ha-font-family-body, var(--paper-font-body1_-_font-family, system-ui, sans-serif));
+        }
+
+        :host([data-popup-theme="dark"]) .flight-card__leaflet-popup {
+          --popup-fallback-bg: #102637;
+          --popup-fallback-text: #f2f7fa;
+          --popup-fallback-muted: #a6bac8;
+          --popup-fallback-border: #365161;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          :host(:not([data-popup-theme])) .flight-card__leaflet-popup {
+            --popup-fallback-bg: #102637;
+            --popup-fallback-text: #f2f7fa;
+            --popup-fallback-muted: #a6bac8;
+            --popup-fallback-border: #365161;
+          }
+        }
+
+        .flight-card__leaflet-popup .leaflet-popup-content-wrapper {
+          padding: 0;
+          border: 1px solid var(--popup-border);
+          border-radius: 14px;
+          color: var(--popup-text);
+          background: var(--popup-bg);
+          box-shadow: 0 8px 28px rgb(0 0 0 / 24%);
+          overflow: hidden;
+        }
+
+        .flight-card__leaflet-popup .leaflet-popup-content {
           margin: 0;
+          width: min(280px, calc(100vw - 72px)) !important;
+          max-width: calc(100cqw - 32px);
           line-height: 1.35;
         }
 
-        .flight-card__popup-image {
-          margin-top: 6px;
-          width: 160px;
-          max-width: 100%;
+        .flight-card__leaflet-popup .leaflet-popup-tip {
+          background: var(--popup-bg);
+          border: 1px solid var(--popup-border);
+          box-shadow: none;
+        }
+
+        .flight-card__leaflet-popup .leaflet-popup-scrolled { border: 0; }
+
+        .flight-card__leaflet-popup a.leaflet-popup-close-button {
+          color: var(--popup-muted);
+          width: 30px;
+          height: 30px;
+          line-height: 30px;
+        }
+
+        .flight-card__leaflet-popup a.leaflet-popup-close-button:hover,
+        .flight-card__leaflet-popup a.leaflet-popup-close-button:focus-visible {
+          color: var(--popup-text);
+          background: var(--secondary-background-color, rgb(127 127 127 / 12%));
+          border-radius: 0 14px 0 8px;
+        }
+
+        .flight-card__popup { overflow-wrap: anywhere; }
+        .flight-card__popup-header { padding: 16px 32px 14px 18px; }
+        .flight-card__popup-title { font-size: 23px; font-weight: 750; letter-spacing: .01em; }
+        .flight-card__popup-type { color: var(--popup-muted); font-size: 13px; margin-top: 3px; }
+        @container (max-width: 320px) {
+          .flight-card__popup-header { padding-left: 32px; }
+        }
+        .flight-card__popup-readings, .flight-card__popup-details {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          margin: 0;
+          border-top: 1px solid var(--popup-border);
+        }
+        .flight-card__popup-reading { padding: 13px 18px; }
+        .flight-card__popup-reading:nth-child(even) { border-left: 1px solid var(--popup-border); }
+        .flight-card__popup-label {
+          margin: 0 0 5px;
+          color: var(--popup-muted);
+          font-size: 10px;
+          font-weight: 650;
+          letter-spacing: .09em;
+          text-transform: uppercase;
+        }
+        .flight-card__popup-value { margin: 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .flight-card__popup-unit { font-size: 13px; font-weight: 500; white-space: nowrap; }
+        .flight-card__popup-readings--secondary .flight-card__popup-value { font-size: 16px; font-weight: 600; }
+        .flight-card__popup-details { gap: 12px 16px; padding: 14px 18px; }
+        .flight-card__popup-detail--wide { grid-column: 1 / -1; }
+        .flight-card__popup-details dd { margin: 0; font-size: 14px; font-weight: 600; }
+        .flight-card__popup-photo { margin: 0; padding: 0 18px 16px; }
+        .flight-card__map .flight-card__popup-image {
+          display: block;
+          width: 100%;
+          max-width: 100% !important;
           height: auto;
-          border-radius: 6px;
-          border: 1px solid #cbd5e1;
-          background: #f8fafc;
+          aspect-ratio: auto 16 / 9;
+          max-height: 160px !important;
+          object-fit: contain;
+          border-radius: 8px;
+          background: var(--secondary-background-color, rgb(127 127 127 / 12%));
         }
       </style>
       <ha-card>
@@ -500,7 +602,30 @@ class FlightCard extends HTMLElement {
             });
           },
           onEachFeature: (feature, layer) => {
-            layer.bindPopup(this._popupHtml(feature.properties as FlightFeatureProperties));
+            // Keep a DOM node so popup.update() retains photo listeners and error removal.
+            const popupContent = document.createElement("div");
+            popupContent.innerHTML = this._popupHtml(feature.properties as FlightFeatureProperties);
+            layer.bindPopup(popupContent, {
+              className: "flight-card__leaflet-popup",
+              minWidth: 200,
+              maxWidth: 280,
+              maxHeight: Math.max(120, this._config.map_height - 70),
+            });
+            layer.on("popupopen", () => {
+              const popup = layer.getPopup();
+              const image = popup?.getElement()?.querySelector<HTMLImageElement>(".flight-card__popup-image");
+              if (!popup || !image) return;
+              // A lazy photo changes the popup height after Leaflet's first auto-pan.
+              const refreshPhoto = () => {
+                if (!image.naturalWidth) image.closest("figure")?.remove();
+                popup.update();
+              };
+              if (image.complete) refreshPhoto();
+              else {
+                image.addEventListener("load", refreshPhoto, { once: true });
+                image.addEventListener("error", refreshPhoto, { once: true });
+              }
+            });
           },
         });
 
@@ -652,44 +777,33 @@ class FlightCard extends HTMLElement {
   }
 
   private _popupHtml(props: FlightFeatureProperties): string {
-    const lines: string[] = [];
     const title = firstNonEmptyString([props.flight, props.registration, props.aircraft_type, "Aircraft"]);
-
-    lines.push(`<strong>${escapeHtml(title)}</strong>`);
-    if (props.aircraft_type) {
-      lines.push(`Type: ${escapeHtml(props.aircraft_type)}`);
-    }
-    if (props.registration) {
-      lines.push(`Registration: ${escapeHtml(props.registration)}`);
-    }
-    if (props.manufacturer) {
-      lines.push(`Manufacturer: ${escapeHtml(props.manufacturer)}`);
-    }
-    if (props.registered_owners) {
-      lines.push(`Owner: ${escapeHtml(props.registered_owners)}`);
-    }
-
-    if (Number.isFinite(props.altitude_ft)) {
-      lines.push(`Altitude: ${Math.round(props.altitude_ft as number).toLocaleString()} ft`);
-    }
-
-    if (Number.isFinite(props.speed_kt)) {
-      lines.push(`Speed: ${Math.round(props.speed_kt as number)} kt`);
-    }
-
-    if (Number.isFinite(props.track_deg)) {
-      lines.push(`Track: ${Math.round(props.track_deg as number)}°`);
-    }
-
-    if (Number.isFinite(props.seen_s)) {
-      lines.push(`Seen: ${(props.seen_s as number).toFixed(1)} s ago`);
-    }
-
-    const imageHtml = props.airframe_image_url
-      ? `<img class="flight-card__popup-image" src="${escapeHtml(props.airframe_image_url)}" alt="Airframe image" loading="lazy" referrerpolicy="no-referrer" />`
+    const reading = (label: string, value: number | null, unit: string, decimals?: number) => {
+      const formatted = Number.isFinite(value)
+        ? decimals === undefined ? Math.round(value as number).toLocaleString() : (value as number).toFixed(decimals)
+        : "—";
+      return `<div class="flight-card__popup-reading"><dt class="flight-card__popup-label">${label}</dt>
+        <dd class="flight-card__popup-value">${formatted}${Number.isFinite(value) ? ` <span class="flight-card__popup-unit">${unit}</span>` : ""}</dd></div>`;
+    };
+    const details = [
+      ["Registration", props.registration],
+      ["Manufacturer", props.manufacturer],
+      ["Owner", props.registered_owners],
+    ].filter(([, value]) => value).map(([label, value]) =>
+      `<div class="flight-card__popup-detail${label === "Owner" ? " flight-card__popup-detail--wide" : ""}">
+        <dt class="flight-card__popup-label">${label}</dt><dd>${escapeHtml(value)}</dd></div>`
+    ).join("");
+    // Remote photos carry no photographer metadata; do not invent a credit or link.
+    const imageHtml = /^https?:\/\//i.test(props.airframe_image_url)
+      ? `<figure class="flight-card__popup-photo"><img class="flight-card__popup-image" src="${escapeHtml(props.airframe_image_url)}"
+          alt="Airframe image for ${escapeHtml(title)}" loading="lazy" referrerpolicy="no-referrer" /></figure>`
       : "";
-
-    return `<p class="flight-card__popup">${lines.join("<br>")}${imageHtml ? `<br>${imageHtml}` : ""}</p>`;
+    return `<article class="flight-card__popup" aria-label="Aircraft details">
+      <header class="flight-card__popup-header"><div class="flight-card__popup-title">${escapeHtml(title)}</div>
+        ${props.aircraft_type ? `<div class="flight-card__popup-type">${escapeHtml(props.aircraft_type)}</div>` : ""}</header>
+      <dl class="flight-card__popup-readings">${reading("Altitude", props.altitude_ft, "ft")}${reading("Speed", props.speed_kt, "kt")}</dl>
+      <dl class="flight-card__popup-readings flight-card__popup-readings--secondary">${reading("Track", props.track_deg, "°")}${reading("Seen", props.seen_s, "s ago", 1)}</dl>
+      ${details ? `<dl class="flight-card__popup-details">${details}</dl>` : ""}${imageHtml}</article>`;
   }
 
   private _startResizeObserver(): void {
@@ -917,6 +1031,9 @@ function stringOrDefault(value: unknown, fallback = ""): string {
 }
 
 function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || (typeof value === "string" && !value.trim())) {
+    return null;
+  }
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 }
