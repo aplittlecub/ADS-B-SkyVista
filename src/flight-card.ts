@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection, Point } from "geojson";
 import leafletCss from "leaflet/dist/leaflet.css?inline";
 
-const CARD_VERSION = "0.3.2";
+const CARD_VERSION = "1.0.0";
 const CARD_TYPE = "flight-card";
 const ADSB_ICON_MODULES = import.meta.glob("./assets/adsb-icons/*.svg", {
   eager: true,
