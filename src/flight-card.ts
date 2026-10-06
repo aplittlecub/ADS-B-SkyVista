@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection, Point } from "geojson";
 import leafletCss from "leaflet/dist/leaflet.css?inline";
 
-const CARD_VERSION = "1.0.1";
+const CARD_VERSION = "1.0.2";
 const CARD_TYPE = "flight-card";
 const ADSB_ICON_MODULES = import.meta.glob("./assets/adsb-icons/*.svg", {
   eager: true,
@@ -837,6 +837,11 @@ class FlightCard extends HTMLElement {
         return;
       }
       this._map.invalidateSize({ pan });
+      // Responsive CSS changes popup width; refresh Leaflet's cached layout and pan.
+      this._aircraftLayer?.eachLayer((layer) => {
+        const popup = layer.getPopup();
+        if (popup?.isOpen()) popup.update();
+      });
     });
   }
 

@@ -74,10 +74,11 @@ for (const theme of ["light", "dark"] as const) {
     for (const width of [390, 320, 920]) {
       await page.setViewportSize({ width, height: 850 });
       await expect.poll(() => page.locator("flight-card").evaluate((card: any) => card._map.getSize().x)).toBe(Math.min(680, width - 40));
-      const bounds = await wrapper.boundingBox();
-      expect(bounds!.width).toBeLessThanOrEqual(width - 40);
-      expect(bounds!.x).toBeGreaterThanOrEqual(19);
-      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width - 19);
+      // Relayout and animated pan must settle with the popup inside the resized map.
+      await expect.poll(async () => {
+        const bounds = await wrapper.boundingBox();
+        return { fits: Boolean(bounds && bounds.width <= width - 40 && bounds.x >= 19 && bounds.x + bounds.width <= width - 19), width, bounds };
+      }).toMatchObject({ fits: true });
       await expect(values).toHaveText(["32,000 ft", "430 kt", "240 °", "0.4 s ago"]);
     }
     await page.locator(".leaflet-popup-close-button").click();
