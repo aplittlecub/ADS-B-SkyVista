@@ -477,6 +477,8 @@ class FlightCard extends HTMLElement {
           maxZoom: 19,
           updateWhenIdle: true,
           keepBuffer: 4,
+          crossOrigin: "anonymous",
+          referrerPolicy: "origin",
         }).addTo(this._map);
 
         this._map.setView(center, this._config.default_zoom);
