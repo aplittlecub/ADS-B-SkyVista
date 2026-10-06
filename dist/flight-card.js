@@ -597,7 +597,10 @@ class Jn extends HTMLElement {
   }
   _invalidateMapSize(a) {
     this._map && requestAnimationFrame(() => {
-      this._map && this._map.invalidateSize({ pan: a });
+      this._map && (this._map.invalidateSize({ pan: a }), this._aircraftLayer?.eachLayer((l) => {
+        const _ = l.getPopup();
+        _?.isOpen() && _.update();
+      }));
     });
   }
   async _waitForMapContainerReady() {

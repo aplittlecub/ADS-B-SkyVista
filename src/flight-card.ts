@@ -837,6 +837,11 @@ class FlightCard extends HTMLElement {
         return;
       }
       this._map.invalidateSize({ pan });
+      // Responsive CSS changes popup width; refresh Leaflet's cached layout and pan.
+      this._aircraftLayer?.eachLayer((layer) => {
+        const popup = layer.getPopup();
+        if (popup?.isOpen()) popup.update();
+      });
     });
   }
 
