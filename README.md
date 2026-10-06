@@ -13,7 +13,7 @@ It includes:
 
 </div>
 
-![ADS-B SkyVista preview](docs/preview.svg)
+![ADS-B SkyVista concept illustration showing aircraft over a dark map, a home marker, and sample callsign, altitude, and speed data](docs/skyvista-aircraft-map-concept.png)
 
 ## Requirements
 
