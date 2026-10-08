@@ -1,7 +1,16 @@
 import type { Feature, FeatureCollection, Point } from "geojson";
 import leafletCss from "leaflet/dist/leaflet.css?inline";
+import { GeoJsonClient, type SnapshotHass } from "./geojson-client";
 
-const CARD_VERSION = "1.0.2";
+// HA's extra modules can execute before its scoped-registry polyfill replaces
+// customElements AND HTMLElement. Wait before evaluating the class declaration,
+// not merely before define(), so it inherits from the final HTMLElement base.
+// Standalone previews/tests without HA's root retain immediate registration.
+if (document.querySelector("home-assistant") && !customElements.get("home-assistant")) {
+  await customElements.whenDefined("home-assistant");
+}
+
+const CARD_VERSION = "1.0.3";
 const CARD_TYPE = "flight-card";
 const ADSB_ICON_MODULES = import.meta.glob("./assets/adsb-icons/*.svg", {
   eager: true,
@@ -37,7 +46,7 @@ interface HassEntity {
   last_updated?: string;
 }
 
-interface HomeAssistant {
+interface HomeAssistant extends SnapshotHass {
   themes?: { darkMode?: boolean };
   states?: Record<string, HassEntity>;
   config?: {
@@ -86,6 +95,14 @@ interface CustomCardRegistration {
 type FlightFeature = Feature<Point, FlightFeatureProperties>;
 type FlightCollection = FeatureCollection<Point, FlightFeatureProperties>;
 type LeafletModule = typeof import("leaflet");
+interface AircraftMarker {
+  marker: import("leaflet").Marker;
+  content: HTMLDivElement;
+  iconHtml: string;
+  popupHtml: string;
+  photo?: HTMLImageElement;
+  failedPhoto?: string;
+}
 
 const DEFAULT_CONFIG: FlightCardConfig = {
   title: "ADS-B SkyVista",
@@ -110,8 +127,12 @@ class FlightCard extends HTMLElement {
 
   private _map?: import("leaflet").Map;
   private _leaflet?: LeafletModule;
-  private _aircraftLayer?: import("leaflet").GeoJSON;
+  private _aircraftLayer?: import("leaflet").FeatureGroup;
+  private _aircraftMarkers = new Map<string, AircraftMarker>();
+  private _anonymousMarkerId = 0;
   private _mapInitPromise?: Promise<void>;
+  private _mapGeneration = 0;
+  private _cancelMapWait?: () => void;
   private _mapResizeObserver?: ResizeObserver;
   private _resizeFixTimeouts: number[] = [];
 
@@ -120,6 +141,20 @@ class FlightCard extends HTMLElement {
   private _latestGeoJson: FlightCollection = EMPTY_COLLECTION;
   private _lastRenderedFingerprint = "";
   private _resolvedEntityId = "";
+  private _sourceKey = "";
+  private _snapshotAt?: number;
+  private _freshnessTimer?: ReturnType<typeof setTimeout>;
+  private _snapshotClient = new GeoJsonClient(
+    (snapshot) => this._showSnapshot(normalizeGeoJson(snapshot.geojson), snapshot.aircraft_count, snapshot.updated),
+    (state, message, keepSnapshot) => {
+      if ((state === "loading" || keepSnapshot) && this._snapshotAt !== undefined) {
+        this._updateFreshness();
+        return;
+      }
+      if (state === "error") this._clearSnapshot();
+      this._setStatus(state === "error" ? "error" : "idle", message);
+    },
+  );
 
   private _els: {
     card?: HTMLElement;
@@ -200,6 +235,17 @@ class FlightCard extends HTMLElement {
   }
 
   setConfig(config: Partial<FlightCardConfig> & Record<string, unknown>): void {
+    try {
+      this._configure(config);
+    } catch (error) {
+      // HA's card wrapper can replace this card without logging the exception.
+      // Keep the original stack, but do not log user configuration or state.
+      console.error("ADS-B SkyVista: card configuration failed", error);
+      throw error;
+    }
+  }
+
+  private _configure(config: Partial<FlightCardConfig> & Record<string, unknown>): void {
     this._config = normalizeConfig(config);
     this._hasAutofit = false;
 
@@ -226,6 +272,13 @@ class FlightCard extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    this._snapshotClient.stop();
+    clearTimeout(this._freshnessTimer);
+    this._snapshotAt = undefined;
+    this._sourceKey = "";
+    this._aircraftMarkers.clear();
+    this._mapGeneration++;
+    this._cancelMapWait?.();
     if (this._map) {
       this._map.remove();
       this._map = undefined;
@@ -240,6 +293,7 @@ class FlightCard extends HTMLElement {
     this._resizeFixTimeouts.forEach((id) => window.clearTimeout(id));
     this._resizeFixTimeouts = [];
     this._mapInitPromise = undefined;
+    this._hasAutofit = false;
   }
 
   getCardSize(): number {
@@ -549,7 +603,7 @@ class FlightCard extends HTMLElement {
   }
 
   private async _ensureMap(): Promise<void> {
-    if (this._map || !this._els.map) {
+    if (!this.isConnected || this._map || !this._els.map) {
       return;
     }
 
@@ -557,11 +611,14 @@ class FlightCard extends HTMLElement {
       return this._mapInitPromise;
     }
 
+    const generation = this._mapGeneration;
     this._mapInitPromise = (async () => {
       try {
         this._setStatus("idle", "Loading map");
         this._leaflet = await loadLeaflet();
+        if (!this.isConnected || generation !== this._mapGeneration) return;
         await this._waitForMapContainerReady();
+        if (!this.isConnected || generation !== this._mapGeneration) return;
 
         const L = this._leaflet;
         const center = this._resolveInitialCenter();
@@ -587,47 +644,7 @@ class FlightCard extends HTMLElement {
         }).addTo(this._map);
 
         this._map.setView(center, this._config.default_zoom);
-        this._aircraftLayer = L.geoJSON([], {
-          pointToLayer: (feature, latlng) => {
-            const props = feature?.properties as FlightFeatureProperties | undefined;
-            return L.marker(latlng, {
-              icon: L.divIcon({
-                className: "flight-card__aircraft-marker",
-                html: aircraftIconHtml(props),
-                iconSize: [24, 24],
-                iconAnchor: [12, 12],
-                popupAnchor: [0, -10],
-              }),
-              keyboard: false,
-            });
-          },
-          onEachFeature: (feature, layer) => {
-            // Keep a DOM node so popup.update() retains photo listeners and error removal.
-            const popupContent = document.createElement("div");
-            popupContent.innerHTML = this._popupHtml(feature.properties as FlightFeatureProperties);
-            layer.bindPopup(popupContent, {
-              className: "flight-card__leaflet-popup",
-              minWidth: 200,
-              maxWidth: 280,
-              maxHeight: Math.max(120, this._config.map_height - 70),
-            });
-            layer.on("popupopen", () => {
-              const popup = layer.getPopup();
-              const image = popup?.getElement()?.querySelector<HTMLImageElement>(".flight-card__popup-image");
-              if (!popup || !image) return;
-              // A lazy photo changes the popup height after Leaflet's first auto-pan.
-              const refreshPhoto = () => {
-                if (!image.naturalWidth) image.closest("figure")?.remove();
-                popup.update();
-              };
-              if (image.complete) refreshPhoto();
-              else {
-                image.addEventListener("load", refreshPhoto, { once: true });
-                image.addEventListener("error", refreshPhoto, { once: true });
-              }
-            });
-          },
-        });
+        this._aircraftLayer = L.featureGroup();
 
         this._aircraftLayer.addTo(this._map);
         this._startResizeObserver();
@@ -636,10 +653,11 @@ class FlightCard extends HTMLElement {
         this._renderGeoJson(this._latestGeoJson);
         this._syncFromHass();
       } catch (error) {
+        if (!this.isConnected || generation !== this._mapGeneration) return;
         const message = error instanceof Error ? error.message : "Unknown map error";
         this._setStatus("error", `Map error: ${message}`);
       } finally {
-        this._mapInitPromise = undefined;
+        if (generation === this._mapGeneration) this._mapInitPromise = undefined;
       }
     })();
 
@@ -647,13 +665,24 @@ class FlightCard extends HTMLElement {
   }
 
   private _syncFromHass(): void {
-    if (!this._hass) {
+    if (!this._hass || !this.isConnected) {
       return;
     }
 
     const entityId = resolveConfiguredOrAutoEntity(this._hass, this._config.entity);
     this._resolvedEntityId = entityId;
     const entity = entityId ? this._hass.states?.[entityId] : undefined;
+    const rawGeoJson = entity?.attributes?.geojson;
+    const hasGeoJson = isObjectRecord(rawGeoJson) && rawGeoJson.type === "FeatureCollection" && Array.isArray(rawGeoJson.features);
+    const entryId = typeof entity?.attributes?.config_entry_id === "string" ? entity.attributes.config_entry_id : "";
+    // Prefer explicit inline data: combined/template entities may inherit a source entry ID.
+    const sourceKey = `${entityId}|${hasGeoJson ? "inline" : entryId}`;
+    if (sourceKey !== this._sourceKey) {
+      this._snapshotClient.stop();
+      this._sourceKey = sourceKey;
+      this._lastRenderedFingerprint = "";
+      this._clearSnapshot();
+    }
     if (!entity) {
       if (this._els.count) {
         this._els.count.textContent = "Aircraft: 0";
@@ -664,48 +693,81 @@ class FlightCard extends HTMLElement {
       const configured = this._config.entity.trim();
       this._setStatus(
         configured ? "error" : "idle",
-        configured ? `Entity not found: ${configured}` : "Select Aircraft entity"
+        configured ? `Entity not found: ${configured}` : "Select Aircraft entity (required for multiple sources)"
       );
       this._latestGeoJson = EMPTY_COLLECTION;
       this._renderGeoJson(this._latestGeoJson);
       return;
     }
 
-    const rawGeoJson = entity.attributes?.geojson;
-    const hasGeoJson =
-      isObjectRecord(rawGeoJson) &&
-      rawGeoJson.type === "FeatureCollection" &&
-      Array.isArray(rawGeoJson.features);
-    const geoJson = normalizeGeoJson(rawGeoJson);
-    const updated = formatUpdated(entity.attributes?.updated ?? entity.last_updated);
-
-    const fingerprint = `${entity.state}|${String(entity.attributes?.updated ?? "")}|${geoJson.features.length}`;
-    if (fingerprint !== this._lastRenderedFingerprint) {
-      this._lastRenderedFingerprint = fingerprint;
-      this._latestGeoJson = geoJson;
-      this._renderGeoJson(geoJson);
-    }
-
-    if (this._els.count) {
-      const countFromState = Number(entity.state);
-      const displayCount = Number.isFinite(countFromState) ? countFromState : geoJson.features.length;
-      this._els.count.textContent = `Aircraft: ${Math.max(0, Math.round(displayCount))}`;
-    }
-
-    if (this._els.updated) {
-      this._els.updated.textContent = `Updated: ${updated}`;
-    }
-
-    if (entity.state === "unavailable") {
+    if (entity.state === "unavailable" || entity.state === "unknown") {
+      this._snapshotClient.stop();
+      this._lastRenderedFingerprint = "";
+      this._clearSnapshot();
       this._setStatus("error", "Entity unavailable");
       return;
     }
-    if (entity.state === "unknown" || !hasGeoJson) {
-      this._setStatus("idle", `Waiting for backend data (${entity.entity_id})`);
+    if (!hasGeoJson) {
+      if (entryId) {
+        this._snapshotClient.update(this._hass, entityId, entryId, String(entity.attributes.updated ?? entity.last_updated ?? ""));
+      } else {
+        this._snapshotClient.stop();
+        this._clearSnapshot();
+        this._setStatus("error", "Select a SkyVista sensor or provide inline GeoJSON");
+      }
       return;
     }
 
-    this._setStatus("ok", "Live");
+    this._snapshotClient.stop();
+    const geoJson = normalizeGeoJson(rawGeoJson);
+    // Legacy/template sources can move aircraft without changing count or timestamp.
+    const fingerprint = JSON.stringify([entityId, entity.state, entity.attributes.updated, entity.last_updated, geoJson]);
+    if (fingerprint !== this._lastRenderedFingerprint) {
+      this._lastRenderedFingerprint = fingerprint;
+      const count = Number(entity.state);
+      this._showSnapshot(geoJson, Number.isFinite(count) ? count : geoJson.features.length, entity.attributes.updated ?? entity.last_updated);
+    }
+  }
+
+  private _showSnapshot(geoJson: FlightCollection, count: number, updated: unknown): void {
+    this._latestGeoJson = geoJson;
+    this._renderGeoJson(geoJson);
+    if (this._els.count) {
+      this._els.count.textContent = `Aircraft: ${Math.max(0, Math.round(count))}`;
+    }
+
+    if (this._els.updated) {
+      this._els.updated.textContent = `Updated: ${formatUpdated(updated)}`;
+    }
+
+    this._snapshotAt = typeof updated === "string" ? Date.parse(updated) : NaN;
+    this._updateFreshness();
+  }
+
+  private _updateFreshness(): void {
+    clearTimeout(this._freshnessTimer);
+    this._freshnessTimer = undefined;
+    if (this._snapshotAt === undefined || !this.isConnected) return;
+    const age = Date.now() - this._snapshotAt;
+    if (!Number.isFinite(age) || age < -5000) {
+      this._setStatus("idle", "Stale (unknown age)");
+    } else if (age > 30000) {
+      this._setStatus("idle", "Stale (>30 s)");
+    } else {
+      this._setStatus("ok", "Live");
+      // Expire from the source timestamp, even if no HA event arrives.
+      this._freshnessTimer = setTimeout(() => this._updateFreshness(), 30001 - age);
+    }
+  }
+
+  private _clearSnapshot(): void {
+    clearTimeout(this._freshnessTimer);
+    this._freshnessTimer = undefined;
+    this._snapshotAt = undefined;
+    this._latestGeoJson = EMPTY_COLLECTION;
+    this._renderGeoJson(EMPTY_COLLECTION);
+    if (this._els.count) this._els.count.textContent = "Aircraft: —";
+    if (this._els.updated) this._els.updated.textContent = "Updated: never";
   }
 
   private _renderGeoJson(geoJson: FlightCollection): void {
@@ -713,8 +775,52 @@ class FlightCard extends HTMLElement {
       return;
     }
 
-    this._aircraftLayer.clearLayers();
-    this._aircraftLayer.addData(geoJson as unknown as GeoJSON.FeatureCollection);
+    const identities = geoJson.features.map(aircraftIdentity);
+    const occurrences = new Map<string, number>();
+    for (const id of identities) if (id) occurrences.set(id, (occurrences.get(id) ?? 0) + 1);
+    const retained = new Set<string>();
+    geoJson.features.forEach((feature, index) => {
+      const identity = identities[index];
+      // Missing/duplicate IDs are not safe to follow across snapshots or array reorders.
+      const key = identity && occurrences.get(identity) === 1
+        ? identity : `anonymous:${++this._anonymousMarkerId}`;
+      retained.add(key);
+      const L = this._leaflet!;
+      const [lon, lat] = feature.geometry.coordinates;
+      const iconHtml = aircraftIconHtml(feature.properties);
+      const icon = () => L.divIcon({
+        className: "flight-card__aircraft-marker", html: iconHtml,
+        iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10],
+      });
+      let record = this._aircraftMarkers.get(key);
+      if (!record) {
+        const marker = L.marker([lat, lon], { icon: icon(), keyboard: false });
+        record = { marker, content: document.createElement("div"), iconHtml, popupHtml: "" };
+        marker.bindPopup(record.content, {
+          className: "flight-card__leaflet-popup", minWidth: 200, maxWidth: 280,
+          maxHeight: Math.max(120, this._config.map_height - 70),
+        });
+        const current = record;
+        marker.on("popupopen", () => this._refreshPopupPhoto(current));
+        this._aircraftMarkers.set(key, record);
+        this._aircraftLayer!.addLayer(marker);
+      } else {
+        // Leaflet moves an open popup with its existing marker.
+        record.marker.setLatLng([lat, lon]);
+        if (record.iconHtml !== iconHtml) {
+          record.marker.setIcon(icon());
+          record.iconHtml = iconHtml;
+        }
+      }
+      this._updateAircraftPopup(record, feature.properties);
+    });
+    for (const [key, record] of this._aircraftMarkers) {
+      if (!retained.has(key)) {
+        record.marker.closePopup();
+        this._aircraftLayer.removeLayer(record.marker);
+        this._aircraftMarkers.delete(key);
+      }
+    }
 
     if (geoJson.features.length === 0) {
       this._hasAutofit = false;
@@ -733,13 +839,62 @@ class FlightCard extends HTMLElement {
     }
   }
 
+  private _updateAircraftPopup(record: AircraftMarker, props: FlightFeatureProperties): void {
+    const html = this._popupHtml(props);
+    if (record.popupHtml === html) return;
+    record.popupHtml = html;
+    const next = document.createElement("div");
+    next.innerHTML = html;
+    const nextImage = next.querySelector<HTMLImageElement>(".flight-card__popup-image");
+    const oldImage = record.content.querySelector<HTMLImageElement>(".flight-card__popup-image");
+    const src = nextImage?.getAttribute("src");
+    if (src && src === record.failedPhoto) nextImage?.closest("figure")?.remove();
+    else {
+      record.failedPhoto = undefined;
+      if (nextImage && oldImage && src === oldImage.getAttribute("src")) {
+        oldImage.alt = nextImage.alt;
+        nextImage.closest("figure")!.replaceWith(oldImage.closest("figure")!);
+      }
+    }
+    const popup = record.marker.getPopup();
+    const scroll = popup?.getElement()?.querySelector<HTMLElement>(".leaflet-popup-content");
+    const scrollTop = scroll?.scrollTop ?? 0;
+    record.content.replaceChildren(...Array.from(next.childNodes));
+    if (record.marker.isPopupOpen()) {
+      popup?.update();
+      this._refreshPopupPhoto(record);
+      if (scroll) scroll.scrollTop = scrollTop;
+    }
+  }
+
+  private _refreshPopupPhoto(record: AircraftMarker): void {
+    const popup = record.marker.getPopup();
+    const image = record.content.querySelector<HTMLImageElement>(".flight-card__popup-image");
+    if (!popup || !image) return;
+    const refresh = () => {
+      if (!record.content.contains(image)) return;
+      if (!image.naturalWidth) {
+        record.failedPhoto = image.getAttribute("src") ?? undefined;
+        image.closest("figure")?.remove();
+      }
+      if (record.marker.isPopupOpen()) popup.update();
+    };
+    if (image.complete) refresh();
+    else if (record.photo !== image) {
+      record.photo = image;
+      image.addEventListener("load", refresh, { once: true });
+      image.addEventListener("error", refresh, { once: true });
+    }
+  }
+
   private _setStatus(type: "idle" | "ok" | "error", text: string): void {
     if (!this._els.status) {
       return;
     }
 
-    this._els.status.className = `flight-card__status flight-card__status--${type}`;
-    this._els.status.textContent = text;
+    const className = `flight-card__status flight-card__status--${type}`;
+    if (this._els.status.className !== className) this._els.status.className = className;
+    if (this._els.status.textContent !== text) this._els.status.textContent = text;
   }
 
   private _resolveInitialCenter(): [number, number] {
@@ -857,19 +1012,20 @@ class FlightCard extends HTMLElement {
     }
 
     await new Promise<void>((resolve) => {
-      const timeoutId = window.setTimeout(() => {
+      const finish = () => {
         observer.disconnect();
+        window.clearTimeout(timeoutId);
+        if (this._cancelMapWait === finish) this._cancelMapWait = undefined;
         resolve();
-      }, 5000);
-      this._resizeFixTimeouts.push(timeoutId);
+      };
+      const timeoutId = window.setTimeout(finish, 5000);
+      this._cancelMapWait = finish;
 
       const observer = new ResizeObserver(() => {
         if (!hasUsableSize()) {
           return;
         }
-        observer.disconnect();
-        window.clearTimeout(timeoutId);
-        resolve();
+        finish();
       });
 
       observer.observe(mapEl);
@@ -956,21 +1112,21 @@ function normalizeGeoJson(value: unknown): FlightCollection {
 function resolveConfiguredOrAutoEntity(hass: HomeAssistant, configuredEntity: string): string {
   const states = hass.states ?? {};
   const trimmedConfigured = configuredEntity.trim();
-  if (trimmedConfigured && states[trimmedConfigured]) {
+  if (trimmedConfigured) {
     return trimmedConfigured;
   }
 
   const entries = Object.values(states);
 
-  const byDomainTag = entries.find((entity) => {
+  const byDomainTag = entries.filter((entity) => {
     const source = entity.attributes?.source_domain;
     return typeof source === "string" && source === "flight_card";
   });
-  if (byDomainTag) {
-    return byDomainTag.entity_id;
+  if (byDomainTag.length) {
+    return byDomainTag.length === 1 ? byDomainTag[0].entity_id : "";
   }
 
-  const byGeoJsonShape = entries.find((entity) => {
+  const byGeoJsonShape = entries.filter((entity) => {
     const attrs = entity.attributes;
     const geojson = attrs?.geojson;
     return (
@@ -981,7 +1137,14 @@ function resolveConfiguredOrAutoEntity(hass: HomeAssistant, configuredEntity: st
     );
   });
 
-  return byGeoJsonShape?.entity_id ?? "";
+  return byGeoJsonShape.length === 1 ? byGeoJsonShape[0].entity_id : "";
+}
+
+function aircraftIdentity(feature: FlightFeature): string {
+  const hex = feature.properties.hex.trim().toLowerCase();
+  if (hex && hex !== "unknown") return `hex:${hex}`;
+  return typeof feature.id === "string" || typeof feature.id === "number"
+    ? `feature:${typeof feature.id}:${feature.id}` : "";
 }
 
 function normalizeFeature(value: unknown): FlightFeature | null {
@@ -1004,6 +1167,7 @@ function normalizeFeature(value: unknown): FlightFeature | null {
 
   return {
     type: "Feature",
+    ...(typeof value.id === "string" || typeof value.id === "number" ? { id: value.id } : {}),
     geometry: {
       type: "Point",
       coordinates: [lon, lat],

@@ -211,14 +211,44 @@ Python 3.14: install `tests/requirements.txt` in an isolated environment, then r
 entity exclusion metadata and Recorder serialization/SQLite models, with a synthetic
 coordinator and events; they do not start a Recorder worker or validate a live HA server.
 
-The sensor keeps GeoJSON in live state for the map but excludes it from Recorder;
-aircraft-count states and small attributes remain available in history.
+The sensor publishes aircraft count and small metadata, including `config_entry_id`
+and `updated`. Geometry stays in the coordinator cache and is served through HA's
+authenticated `flight_card/get_geojson` WebSocket command. Requests require read
+permission for the integration's actual Aircraft entity and never poll the receiver.
+Aircraft-count states and small attributes remain available in history.
+
+The card refreshes on source updates and reconnects, discards superseded responses,
+and clears stale aircraft when its source becomes unavailable. Choose an explicit
+`entity` when more than one eligible aircraft sensor exists.
+
+An open aircraft popup follows the same aircraft as its position and telemetry change.
+Identity uses its normalized hex address (or an explicit GeoJSON feature ID when no
+hex is available), never list position or callsign. If the aircraft disappears or its
+identity becomes ambiguous, its popup closes and does not reopen automatically.
+The Live pill stays stable during routine refreshes. It changes to Stale after the
+snapshot's source timestamp is more than 30 seconds old, even without a new HA event;
+an old cached response does not reset that age. Disconnects, unavailable sources, and
+permission failures remain explicit errors. Transient refresh failures retain the
+last known snapshot and its true age.
+
+Legacy and custom combined/template entities that supply a GeoJSON FeatureCollection
+in their `geojson` attribute remain supported; inline data takes precedence even if
+they also carry a source `config_entry_id`. Templates that previously copied the
+native sensor's `geojson` attribute must be migrated: that native attribute no longer
+exists. A single-source alias can carry the native `config_entry_id` and `updated`;
+an external combined-data producer must continue supplying its own inline GeoJSON.
+This command returns one entry's snapshot and does not aggregate multiple receivers.
 
 If `custom:flight-card` does not register after restarting HA and refreshing the
 dashboard, collect the first browser console error, the SkyVista version banner,
 and the status/body of `/flight_card/flight-card.js`. Include HA/SkyVista/browser
-versions and whether a private window reproduces it. A successful download alone
-does not prove the module executed. See [issue 2](https://github.com/aplittlecub/ADS-B-SkyVista/issues/2).
+versions and whether a private window reproduces it. Also record the read-only
+console result of `typeof customElements.get('flight-card')`. A successful download
+or version banner does not prove the definition survived HA's startup registry
+replacement. The card now waits for HA's root element to be defined before declaring
+and registering its class, ensuring it uses HA's final element registry and base
+class. Standalone previews retain immediate registration.
+See [issue 2](https://github.com/aplittlecub/ADS-B-SkyVista/issues/2).
 
 ## References
 

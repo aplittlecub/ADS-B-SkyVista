@@ -5,6 +5,41 @@ const bundle = await readFile("custom_components/flight_card/flight-card.js", "u
 const origin = "http://skyvista.test";
 const tile = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64");
 
+test('late custom-element registration rebuilds the HA-style placeholder before fetching', async ({page})=>{
+  await page.clock.install();
+  let release!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.route('**/*',async route=>{
+    const url=route.request().url();
+    if(url.endsWith('/flight-card.js')){await gate;await route.fulfill({contentType:'text/javascript',body:bundle});}
+    else if(url.endsWith('/delayed'))await route.fulfill({contentType:'text/html',body:`<style>ha-card{display:block}</style><main></main><script>
+      window.requests=0;
+      const hass={states:{'sensor.aircraft':{entity_id:'sensor.aircraft',state:'0',attributes:{source_domain:'flight_card',config_entry_id:'test',updated:'2026-10-08T14:00:00Z'}}},callWS:async()=>{requests++;return {config_entry_id:'test',updated:'2026-10-08T14:00:00Z',aircraft_count:0,geojson:{type:'FeatureCollection',features:[]}}}};
+      // Installed HA 20260826.7 factory contract: whenDefined emits ll-rebuild;
+      // its wrapper installs a once-listener and recreates the configured element.
+      function build(){let card;if(customElements.get('flight-card')){card=document.createElement('flight-card');card.setConfig({entity:'sensor.aircraft'});}else{card=document.createElement('hui-error-card');card.textContent='Custom element missing';card.style.display='none';const timer=setTimeout(()=>card.style.display='',2000);customElements.whenDefined('flight-card').then(()=>{clearTimeout(timer);card.dispatchEvent(new Event('ll-rebuild',{bubbles:true}));});}card.hass=hass;card.addEventListener('ll-rebuild',event=>{event.stopPropagation();build();},{once:true});document.querySelector('main').replaceChildren(card);}
+      build();import('/flight-card.js');
+    </script>`});
+    else await route.fulfill({contentType:'image/png',body:tile});
+  });
+  await page.goto(`${origin}/delayed`,{waitUntil:'domcontentloaded'});
+  await page.clock.runFor(2100);
+  await expect(page.locator('hui-error-card')).toBeVisible();
+  expect(await page.evaluate(()=>(window as any).requests)).toBe(0);
+  release();
+  await expect(page.locator('.flight-card__count')).toHaveText('Aircraft: 0');
+  await expect(page.locator('hui-error-card')).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as any).requests)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('configuration exceptions retain diagnostics even when the host catches them',async({page})=>{
+  const {errors}=await openCard(page);
+  expect(await page.locator('flight-card').evaluate((card:any)=>{try{card.setConfig(null);}catch(error){return (error as Error).message;}return null;})).toBe('Invalid configuration');
+  expect(errors.some(message=>message.includes('ADS-B SkyVista: card configuration failed'))).toBe(true);
+});
+
 async function openCard(page: Page, config: Record<string, unknown> = {}, hidden = false) {
   const errors: string[] = [];
   const tileRequests: Array<{ url: string; referer?: string; origin?: string }> = [];

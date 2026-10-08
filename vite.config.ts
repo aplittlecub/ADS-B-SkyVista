@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { copyFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 
 export default defineConfig(({ mode }) => ({
@@ -9,9 +9,10 @@ export default defineConfig(({ mode }) => ({
       async writeBundle(output) {
         // Runs after each completed build, including build:watch.
         for (const name of ["flight-card.js", "flight-card.js.map"]) {
-          await copyFile(
-            resolve(output.dir!, name),
+          // Plain writes also work across Docker Desktop's Windows bind mounts.
+          await writeFile(
             resolve("custom_components/flight_card", name),
+            await readFile(resolve(output.dir!, name)),
           );
         }
       },

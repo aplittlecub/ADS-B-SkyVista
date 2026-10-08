@@ -1,4 +1,6 @@
 # Keep embedded source-map content reproducible across Windows and Linux builds.
+*.sh text eol=lf
+src/geojson-client.ts text eol=lf
 src/flight-card.ts text eol=lf
 dist/flight-card.js text eol=lf
 dist/flight-card.js.map text eol=lf

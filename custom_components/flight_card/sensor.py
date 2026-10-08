@@ -27,12 +27,12 @@ async def async_setup_entry(
 class FlightCardAircraftSensor(
     CoordinatorEntity[FlightCardDataUpdateCoordinator], SensorEntity
 ):
-    """Expose aircraft summary and geojson payload."""
+    """Expose aircraft count and compact metadata; geometry stays in the coordinator."""
 
     _attr_has_entity_name = True
     _attr_name = "Aircraft"
     _attr_icon = "mdi:airplane"
-    # Keep the live map payload in HA state, without storing it in history.
+    # Defensive compatibility if an extension adds the legacy attribute again.
     _unrecorded_attributes = frozenset({"geojson"})
 
     def __init__(self, coordinator: FlightCardDataUpdateCoordinator, entry: ConfigEntry) -> None:
@@ -58,7 +58,6 @@ class FlightCardAircraftSensor(
         return {
             "source_domain": DOMAIN,
             "config_entry_id": self._entry.entry_id,
-            "geojson": data.get("geojson", {"type": "FeatureCollection", "features": []}),
             "updated": data.get("updated"),
             "data_url": data.get("data_url"),
             "max_age": data.get("max_age"),

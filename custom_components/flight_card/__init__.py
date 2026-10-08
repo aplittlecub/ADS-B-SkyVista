@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -13,22 +14,26 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import FlightCardDataUpdateCoordinator
+from .websocket import async_setup_websocket
 
 _LOGGER = logging.getLogger(__name__)
 
 CARD_JS_FILE = Path(__file__).with_name("flight-card.js")
 CARD_JS_URL = "/flight_card/flight-card.js"
 DATA_FRONTEND_REGISTERED = "_frontend_registered"
+DATA_FRONTEND_LOCK = "_frontend_lock"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up ADS-B SkyVista integration."""
+    async_setup_websocket(hass)
     await _async_setup_frontend(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ADS-B SkyVista from a config entry."""
+    async_setup_websocket(hass)
     await _async_setup_frontend(hass)
 
     coordinator = FlightCardDataUpdateCoordinator(hass=hass, entry=entry)
@@ -59,6 +64,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_setup_frontend(hass: HomeAssistant) -> None:
     """Register and auto-load the ADS-B SkyVista frontend module."""
     domain_data = hass.data.setdefault(DOMAIN, {})
+    # Setup and entry setup can overlap while static-path registration awaits I/O.
+    lock = domain_data.setdefault(DATA_FRONTEND_LOCK, asyncio.Lock())
+    async with lock:
+        await _async_register_frontend(hass, domain_data)
+
+
+async def _async_register_frontend(hass: HomeAssistant, domain_data: dict) -> None:
+    """Register once; a missing bundle or failed attempt remains retryable."""
 
     if domain_data.get(DATA_FRONTEND_REGISTERED):
         return
