@@ -10,7 +10,7 @@ if (document.querySelector("home-assistant") && !customElements.get("home-assist
   await customElements.whenDefined("home-assistant");
 }
 
-const CARD_VERSION = "1.0.3";
+const CARD_VERSION = "1.1.0";
 const CARD_TYPE = "flight-card";
 const ADSB_ICON_MODULES = import.meta.glob("./assets/adsb-icons/*.svg", {
   eager: true,
@@ -55,10 +55,13 @@ interface HomeAssistant extends SnapshotHass {
   };
 }
 
+type MapTheme = "auto" | "light" | "dark";
+
 interface FlightCardConfig {
   title: string;
   entity: string;
   map_height: number;
+  map_theme: MapTheme;
   default_zoom: number;
   fit_bounds: boolean;
   center_lat: number | null;
@@ -108,6 +111,7 @@ const DEFAULT_CONFIG: FlightCardConfig = {
   title: "ADS-B SkyVista",
   entity: "",
   map_height: 420,
+  map_theme: "auto",
   default_zoom: 8,
   fit_bounds: true,
   center_lat: null,
@@ -124,6 +128,9 @@ const EMPTY_COLLECTION: FlightCollection = {
 class FlightCard extends HTMLElement {
   private _hass?: HomeAssistant;
   private _config: FlightCardConfig = { ...DEFAULT_CONFIG };
+  private _mapThemeOverride?: MapTheme;
+  private _systemTheme?: MediaQueryList;
+  private _onSystemThemeChange = () => this._applyMapTheme();
 
   private _map?: import("leaflet").Map;
   private _leaflet?: LeafletModule;
@@ -163,6 +170,7 @@ class FlightCard extends HTMLElement {
     count?: HTMLElement;
     updated?: HTMLElement;
     map?: HTMLElement;
+    mapTheme?: HTMLSelectElement;
   } = {};
 
   static getStubConfig(): Partial<FlightCardConfig> {
@@ -186,6 +194,11 @@ class FlightCard extends HTMLElement {
           ],
         },
         { name: "fit_bounds", selector: { boolean: {} } },
+        { name: "map_theme", selector: { select: { options: [
+          { value: "auto", label: "Auto (follow Home Assistant)" },
+          { value: "light", label: "Light" },
+          { value: "dark", label: "Dark" },
+        ] } } },
         {
           type: "expandable",
           name: "advanced",
@@ -204,6 +217,7 @@ class FlightCard extends HTMLElement {
         if (schema.name === "default_zoom") return "Default zoom";
         if (schema.name === "map_height") return "Map height (px)";
         if (schema.name === "fit_bounds") return "Auto-fit map to aircraft";
+        if (schema.name === "map_theme") return "Map theme";
         if (schema.name === "center_lat") return "Center latitude";
         if (schema.name === "center_lon") return "Center longitude";
         if (schema.name === "tile_url") return "Tile URL";
@@ -214,6 +228,7 @@ class FlightCard extends HTMLElement {
   }
 
   set hass(hass: HomeAssistant) {
+    const previousCenter = this._resolveInitialCenter();
     this._hass = hass;
     // HA supplies the active mode; inherited theme colours update open popups too.
     if (typeof hass.themes?.darkMode === "boolean") {
@@ -221,10 +236,14 @@ class FlightCard extends HTMLElement {
     } else {
       delete this.dataset.popupTheme;
     }
+    this._applyMapTheme();
 
     if (this._map && !this._hasConfiguredCenter() && this._latestGeoJson.features.length === 0) {
       const center = this._resolveInitialCenter();
-      this._map.setView(center, this._config.default_zoom, { animate: false });
+      // Theme/state assignments must not reset a manually panned empty map.
+      if (center[0] !== previousCenter[0] || center[1] !== previousCenter[1]) {
+        this._map.setView(center, this._config.default_zoom, { animate: false });
+      }
     }
 
     this._syncFromHass();
@@ -246,13 +265,21 @@ class FlightCard extends HTMLElement {
   }
 
   private _configure(config: Partial<FlightCardConfig> & Record<string, unknown>): void {
+    const previous = this._config;
     this._config = normalizeConfig(config);
-    this._hasAutofit = false;
+    const viewChanged = previous.entity !== this._config.entity
+      || previous.center_lat !== this._config.center_lat
+      || previous.center_lon !== this._config.center_lon
+      || previous.default_zoom !== this._config.default_zoom
+      || previous.fit_bounds !== this._config.fit_bounds;
+    // A saved config replaces the temporary choice made in this card's header.
+    this._mapThemeOverride = undefined;
+    if (viewChanged) this._hasAutofit = false;
 
     this._render();
     this._applyVisualConfig();
 
-    if (this._map) {
+    if (this._map && viewChanged) {
       const center = this._resolveInitialCenter();
       this._map.setView(center, this._config.default_zoom, { animate: false });
       this._scheduleResizeFixes();
@@ -266,12 +293,16 @@ class FlightCard extends HTMLElement {
 
   connectedCallback(): void {
     this._render();
+    this._systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+    this._systemTheme.addEventListener("change", this._onSystemThemeChange);
     this._applyVisualConfig();
     void this._ensureMap();
     this._syncFromHass();
   }
 
   disconnectedCallback(): void {
+    this._systemTheme?.removeEventListener("change", this._onSystemThemeChange);
+    this._systemTheme = undefined;
     this._snapshotClient.stop();
     clearTimeout(this._freshnessTimer);
     this._snapshotAt = undefined;
@@ -345,10 +376,43 @@ class FlightCard extends HTMLElement {
         }
 
         .flight-card__title {
+          min-width: 0;
+          overflow-wrap: anywhere;
           font-size: 1.1rem;
           font-weight: 600;
           color: var(--primary-text-color);
           margin: 0;
+        }
+
+        .flight-card__header-actions {
+          display: flex;
+          align-items: center;
+          flex-shrink: 0;
+          gap: 8px;
+        }
+
+        .flight-card__map-theme {
+          min-height: 36px;
+          padding: 4px 6px;
+          border: 1px solid var(--divider-color, #8b9aa5);
+          border-radius: 8px;
+          background: var(--ha-card-background, var(--card-background-color, #fff));
+          color: var(--primary-text-color, #172b3a);
+          font: inherit;
+          /* Keep native mobile selects readable without focus-triggered zoom. */
+          font-size: 1rem;
+          cursor: pointer;
+        }
+
+        .flight-card__map-theme:focus-visible {
+          outline: 2px solid var(--primary-color, #0277bd);
+          outline-offset: 2px;
+        }
+
+        :host([data-map-theme="dark"]) .flight-card__basemap {
+          /* Filter the single basemap pane, never aircraft, popups or attribution.
+             No transitions or new tile requests when the mode changes. */
+          filter: invert(1) hue-rotate(180deg) saturate(0.75) brightness(0.9) contrast(0.9);
         }
 
         .flight-card__meta {
@@ -571,7 +635,15 @@ class FlightCard extends HTMLElement {
         <div class="card-content flight-card">
           <div class="flight-card__header">
             <h2 class="flight-card__title"></h2>
-            <span class="flight-card__status flight-card__status--idle">Idle</span>
+            <div class="flight-card__header-actions">
+              <select class="flight-card__map-theme" aria-label="Map theme"
+                title="Map theme: Auto follows Home Assistant. Header choices apply only to this card until reload or configuration changes.">
+                <option value="auto">Auto</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+              <span class="flight-card__status flight-card__status--idle">Idle</span>
+            </div>
           </div>
           <div class="flight-card__meta">
             <span class="flight-card__count">Aircraft: 0</span>
@@ -589,7 +661,22 @@ class FlightCard extends HTMLElement {
       count: this._root.querySelector<HTMLElement>(".flight-card__count") ?? undefined,
       updated: this._root.querySelector<HTMLElement>(".flight-card__updated") ?? undefined,
       map: this._root.querySelector<HTMLElement>(".flight-card__map") ?? undefined,
+      mapTheme: this._root.querySelector<HTMLSelectElement>(".flight-card__map-theme") ?? undefined,
     };
+    this._els.mapTheme?.addEventListener("change", () => {
+      this._mapThemeOverride = normalizeMapTheme(this._els.mapTheme?.value);
+      this._applyMapTheme();
+    });
+  }
+
+  private _applyMapTheme(): void {
+    const mode = this._mapThemeOverride ?? this._config.map_theme;
+    const haDark = this._hass?.themes?.darkMode;
+    const dark = mode === "dark" || (mode === "auto"
+      && (typeof haDark === "boolean" ? haDark : this._systemTheme?.matches
+        ?? window.matchMedia("(prefers-color-scheme: dark)").matches));
+    this.dataset.mapTheme = dark ? "dark" : "light";
+    if (this._els.mapTheme) this._els.mapTheme.value = mode;
   }
 
   private _applyVisualConfig(): void {
@@ -598,8 +685,12 @@ class FlightCard extends HTMLElement {
     }
 
     this._els.title.textContent = this._config.title;
-    this._els.map.style.height = `${this._config.map_height}px`;
-    this._invalidateMapSize(false);
+    this._applyMapTheme();
+    const height = `${this._config.map_height}px`;
+    if (this._els.map.style.height !== height) {
+      this._els.map.style.height = height;
+      this._invalidateMapSize(false);
+    }
   }
 
   private async _ensureMap(): Promise<void> {
@@ -630,6 +721,9 @@ class FlightCard extends HTMLElement {
           fadeAnimation: false,
           markerZoomAnimation: false,
         });
+        // Leaflet's tile pane is dedicated to this card's basemap and already
+        // sits below marker/popup panes. Keep its existing position and z-index.
+        this._map.getPane("tilePane")?.classList.add("flight-card__basemap");
 
         L.tileLayer(this._config.tile_url, {
           attribution: this._config.attribution,
@@ -1046,6 +1140,7 @@ function normalizeConfig(config: Partial<FlightCardConfig> & Record<string, unkn
   merged.title = String(merged.title || DEFAULT_CONFIG.title);
   merged.entity = String(merged.entity ?? "").trim();
   merged.map_height = clampNumber(merged.map_height, 200, 1200, DEFAULT_CONFIG.map_height);
+  merged.map_theme = normalizeMapTheme(merged.map_theme);
   merged.default_zoom = clampNumber(merged.default_zoom, 1, 18, DEFAULT_CONFIG.default_zoom);
   merged.fit_bounds = merged.fit_bounds !== false;
 
@@ -1070,6 +1165,10 @@ function normalizeConfig(config: Partial<FlightCardConfig> & Record<string, unkn
   merged.attribution = String(merged.attribution || DEFAULT_CONFIG.attribution);
 
   return merged;
+}
+
+function normalizeMapTheme(value: unknown): MapTheme {
+  return value === "light" || value === "dark" ? value : "auto";
 }
 
 function optionalNumber(value: number | string | null | undefined): number | null {
