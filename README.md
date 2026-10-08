@@ -72,6 +72,7 @@ The integration includes and automatically loads the card, so you do not need a 
 | `title`        | string  | `ADS-B SkyVista` | Card title                                                       |
 | `entity`       | string  | auto-detect      | Optional sensor entity created by the ADS-B SkyVista integration |
 | `map_height`   | number  | `420`            | Map height in px                                                 |
+| `map_theme`    | string  | `auto`           | Basemap palette: `auto`, `light`, or `dark`                        |
 | `default_zoom` | number  | `8`              | Initial zoom                                                     |
 | `fit_bounds`   | boolean | `true`           | Auto-fit map to aircraft once per load                           |
 | `center_lat`   | number  | `null`           | Optional initial center latitude (manual override)               |
@@ -80,6 +81,15 @@ The integration includes and automatically loads the card, so you do not need a 
 | `attribution`  | string  | OSM              | Tile attribution                                                 |
 
 If `center_lat`/`center_lon` are not set, the card centers automatically from Home Assistant location data (`zone.home`, then HA core location).
+
+The header's **Auto / Light / Dark** control changes the map palette immediately for that card. **Auto** follows Home Assistant's active light/dark mode, falling back to the browser's system preference if HA does not supply a mode. Header choices last until the card reloads or its configuration changes; they do not modify the dashboard. Save a preferred default using **Map theme** in the card editor or YAML:
+
+```yaml
+type: custom:flight-card
+map_theme: dark
+```
+
+Dark mode adjusts the existing basemap with a colour filter. Aircraft altitude colours, popup contents, photos, controls, and attribution retain their original colours. The map keeps its position, zoom, open popup, and cached tiles when switching modes. Tile provider, attribution, referrer policy, and caching are unchanged. For a custom provider with its own dark palette, choose `light` to leave those tiles unfiltered.
 
 ## Aircraft Icon Mapping
 
