@@ -140,6 +140,12 @@ test("default-height card keeps photo popup scrollable; failed photo is omitted"
   await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
   await expect(page.locator(".flight-card__popup-image")).toBeVisible();
   await page.locator(".leaflet-popup-close-button").click();
+  let releaseFailure!: () => void;
+  const failureGate = new Promise<void>(resolve => { releaseFailure = resolve; });
+  await page.route(`${origin}/missing-photo.svg`, async route => {
+    await failureGate;
+    await route.fulfill({ contentType: "image/svg+xml", body: "invalid image" });
+  });
   await page.locator("flight-card").evaluate((card: any, url) => {
     const state = card.hass.states['sensor.aircraft'];
     state.attributes.geojson.features[0].properties.airframe_image_url = url;
@@ -148,6 +154,7 @@ test("default-height card keeps photo popup scrollable; failed photo is omitted"
   }, `${origin}/missing-photo.svg`);
   await page.locator(".flight-card__aircraft-marker").click();
   await expect(page.locator(".flight-card__popup-image")).toHaveAttribute("src", `${origin}/missing-photo.svg`);
+  releaseFailure();
   await page.locator(".leaflet-popup-content").evaluate(element => { element.scrollTop = element.scrollHeight; });
   await expect(page.locator(".flight-card__popup-photo")).toHaveCount(0);
   await expect(page.locator(".flight-card__popup-title")).toHaveText("SHT8H");
@@ -165,3 +172,48 @@ for (const theme of ["light", "dark"] as const) {
     expect(errors).toEqual([]);
   });
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} selected popup follows its aircraft through movement, telemetry and reorder`, async ({ page }) => {
+    await openPopup(page, theme, detailed, theme === "dark" ? 390 : 920);
+    await page.locator('flight-card').evaluate((card: any) => {
+      card.testSelected = card._aircraftMarkers.get('hex:abc123').marker;
+      card.testImage = card.shadowRoot.querySelector('.flight-card__popup-image');
+    });
+    for (let step = 1; step <= 3; step++) {
+      await page.locator('flight-card').evaluate((card: any, step) => {
+        const state = card.hass.states['sensor.aircraft'];
+        const a = state.attributes.geojson.features.find((f:any)=>f.properties.hex.toLowerCase()==='abc123');
+        a.geometry.coordinates = [-0.1 + step * 0.02, 51.5 + step * 0.01];
+        a.properties = {...a.properties, hex: 'ABC123', flight: 'FOLLOW'+step, altitude_ft: 2000+step*100, speed_kt:170+step, track_deg:90+step};
+        const b = {...a, geometry:{type:'Point',coordinates:[-0.3,51.4]}, properties:{...a.properties,hex:'def456',flight:'OTHER'}};
+        state.attributes.geojson.features = step % 2 ? [b,a] : [a,b];
+        state.state='2'; card.hass={...card.hass};
+      }, step);
+      await expect(page.locator('.flight-card__popup-title')).toHaveText('FOLLOW'+step);
+      await expect(page.locator('.flight-card__popup-readings dd').first()).toHaveText((2000+step*100).toLocaleString('en-US')+' ft');
+      expect(await page.locator('flight-card').evaluate((card:any)=>{
+        const marker=card._aircraftMarkers.get('hex:abc123').marker;
+        return marker===card.testSelected && marker.isPopupOpen() && marker.getPopup().getLatLng().equals(marker.getLatLng()) && card.testImage===card.shadowRoot.querySelector('.flight-card__popup-image');
+      })).toBe(true);
+    }
+    await page.locator('flight-card').evaluate((card:any)=>{
+      const state=card.hass.states['sensor.aircraft']; card.testFeature=state.attributes.geojson.features.find((f:any)=>f.properties.hex==='ABC123');
+      state.attributes.geojson.features=state.attributes.geojson.features.filter((f:any)=>f.properties.hex!=='ABC123'); state.state='1';card.hass={...card.hass};
+    });
+    await expect(page.locator('.flight-card__popup')).toHaveCount(0);
+    await page.locator('flight-card').evaluate((card:any)=>{const state=card.hass.states['sensor.aircraft'];state.attributes.geojson.features.push(card.testFeature);state.state='2';card.hass={...card.hass};});
+    await expect(page.locator('.flight-card__aircraft-marker')).toHaveCount(2);
+    await expect(page.locator('.flight-card__popup')).toHaveCount(0);
+  });
+}
+
+test('ambiguous duplicate identities close selection instead of following a different aircraft', async ({page})=>{
+  await openPopup(page,'light',compact);
+  await page.locator('flight-card').evaluate((card:any)=>{
+    const state=card.hass.states['sensor.aircraft']; const a=state.attributes.geojson.features[0];
+    state.attributes.geojson.features=[a,{...a,geometry:{type:'Point',coordinates:[1,52]}}];state.state='2';card.hass={...card.hass};
+  });
+  await expect(page.locator('.flight-card__aircraft-marker')).toHaveCount(2);
+  await expect(page.locator('.flight-card__popup')).toHaveCount(0);
+});

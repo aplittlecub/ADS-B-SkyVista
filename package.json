@@ -1,6 +1,6 @@
 {
   "name": "adsb-skyvista",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Display aircraft detected by your local dump1090 receiver directly in Home Assistant.",
   "type": "module",
   "license": "MIT",
@@ -20,6 +20,7 @@
     "@playwright/test": "1.63.0",
     "@types/leaflet": "^1.9.17",
     "@types/node": "22.20.5",
+    "@webcomponents/scoped-custom-element-registry": "0.0.10",
     "typescript": "^5.7.3",
     "vite": "^5.4.10"
   }
