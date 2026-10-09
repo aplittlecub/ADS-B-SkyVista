@@ -6394,7 +6394,7 @@ const Qn = /* @__PURE__ */ Xn(Oe), $n = /* @__PURE__ */ cn({
   default: Qn
 }, [Oe]);
 document.querySelector("home-assistant") && !customElements.get("home-assistant") && await customElements.whenDefined("home-assistant");
-const to = "1.1.0", T0 = "flight-card", eo = /* @__PURE__ */ Object.assign({
+const to = "1.1.1", T0 = "flight-card", eo = /* @__PURE__ */ Object.assign({
   "./assets/adsb-icons/a0.svg": un,
   "./assets/adsb-icons/a1.svg": dn,
   "./assets/adsb-icons/a2.svg": fn,
@@ -7338,6 +7338,7 @@ function mo() {
   window.customCards = window.customCards || [], window.customCards.find((d) => d.type === T0) || window.customCards.push({
     type: T0,
     name: "ADS-B SkyVista",
+    preview: !0,
     description: "Display aircraft from the ADS-B SkyVista integration sensor on a live map.",
     documentationURL: "https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/"
   });

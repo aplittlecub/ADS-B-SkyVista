@@ -55,8 +55,10 @@ Use **Configure** (options) for polling and enrichment settings.
 ## 3. Add the dashboard card
 
 1. Hard refresh the browser once (`Shift+Reload`) after adding the integration.
-2. Open your dashboard and select **Edit dashboard -> Add card -> Manual**.
-3. Paste the following YAML and save:
+2. Open your dashboard and select **Edit dashboard -> Add card -> ADS-B SkyVista** to see the card preview.
+3. Adjust the optional settings and save. Select **Aircraft entity** if more than one compatible sensor exists.
+
+For YAML configuration, choose **Manual** and use:
 
 ```yaml
 type: custom:flight-card
