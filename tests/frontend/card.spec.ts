@@ -141,3 +141,44 @@ test("hidden startup and mobile/desktop resizing preserve map size and aircraft"
   }
   expect(errors).toEqual([]);
 });
+
+for (const receiverCount of [0, 1, 2]) {
+  test(`picker stub preview renders with ${receiverCount} receivers and accepts editor updates`, async ({ page }) => {
+    const { errors } = await openCard(page);
+    const metadata = await page.locator("flight-card").evaluate((current: any, count) => {
+      const registration = (window as any).customCards.find((entry: any) => entry.type === "flight-card");
+      const stub = current.constructor.getStubConfig();
+      const sensor = current.hass.states["sensor.skyvista_aircraft"];
+      const states = Object.fromEntries(Array.from({ length: count }, (_, index) => {
+        const entity_id = `sensor.receiver_${index + 1}`;
+        return [entity_id, { ...sensor, entity_id }];
+      }));
+      const hass = { ...current.hass, states };
+      current.remove();
+      // HA's picker adds the type to getStubConfig and renders the registered card.
+      const preview = document.createElement(registration.type) as any;
+      preview.setConfig({ type: `custom:${registration.type}`, ...stub });
+      preview.hass = hass;
+      document.body.append(preview);
+      return { registration, stub, entityField: preview.constructor.getConfigForm().schema.find((field: any) => field.name === "entity") };
+    }, receiverCount);
+    expect(metadata.registration).toMatchObject({ type: "flight-card", name: "ADS-B SkyVista", preview: true });
+    expect(metadata.stub).toEqual({ title: "ADS-B SkyVista" });
+    expect(metadata.entityField.selector).toEqual({ entity: { domain: "sensor" } });
+    await expect(page.locator(".flight-card__title")).toHaveText("ADS-B SkyVista");
+    await expect(page.locator(".leaflet-tile-loaded").first()).toBeVisible();
+    await expect(page.locator(".flight-card__count")).toHaveText(`Aircraft: ${receiverCount === 1 ? 1 : 0}`);
+    await expect(page.locator(".flight-card__aircraft-marker")).toHaveCount(receiverCount === 1 ? 1 : 0);
+    if (receiverCount !== 1) await expect(page.locator(".flight-card__status")).toContainText("Select Aircraft entity");
+
+    // Configuration editor updates keep rendering the same preview card.
+    await page.locator("flight-card").evaluate((preview: any, count) => {
+      preview.setConfig({ title: "Edited preview", entity: count ? "sensor.receiver_1" : "", map_theme: "dark" });
+    }, receiverCount);
+    await expect(page.locator(".flight-card__title")).toHaveText("Edited preview");
+    await expect(page.locator("flight-card")).toHaveAttribute("data-map-theme", "dark");
+    await expect(page.locator(".flight-card__count")).toHaveText(`Aircraft: ${receiverCount ? 1 : 0}`);
+    await expect(page.locator(".flight-card__aircraft-marker")).toHaveCount(receiverCount ? 1 : 0);
+    expect(errors).toEqual([]);
+  });
+}

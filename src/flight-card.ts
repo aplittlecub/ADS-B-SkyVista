@@ -10,7 +10,7 @@ if (document.querySelector("home-assistant") && !customElements.get("home-assist
   await customElements.whenDefined("home-assistant");
 }
 
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.1.1";
 const CARD_TYPE = "flight-card";
 const ADSB_ICON_MODULES = import.meta.glob("./assets/adsb-icons/*.svg", {
   eager: true,
@@ -1561,6 +1561,7 @@ function registerCustomCard(): void {
     window.customCards.push({
       type: CARD_TYPE,
       name: "ADS-B SkyVista",
+      preview: true,
       description: "Display aircraft from the ADS-B SkyVista integration sensor on a live map.",
       documentationURL: "https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/",
     });
