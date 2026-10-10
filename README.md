@@ -93,6 +93,23 @@ map_theme: dark
 
 Dark mode adjusts the existing basemap with a colour filter. Aircraft altitude colours, popup contents, photos, controls, and attribution retain their original colours. The map keeps its position, zoom, open popup, and cached tiles when switching modes. Tile provider, attribution, referrer policy, and caching are unchanged. For a custom provider with its own dark palette, choose `light` to leave those tiles unfiltered.
 
+## Aircraft Altitude Colours
+
+Aircraft icons are coloured by their reported altitude in **feet**. Use these approximate colour reference points as a quick guide:
+
+| Colour | Altitude reference |
+| --- | --- |
+| Red | Around 0 ft |
+| Orange | Around 1,000–2,000 ft |
+| Yellow to yellow-green | Around 4,000–6,000 ft |
+| Green | Around 8,000–10,000 ft |
+| Cyan/teal | Around 20,000 ft |
+| Blue | Around 30,000 ft |
+| Magenta/purple | 40,000 ft and above |
+| Grey | Altitude missing or invalid |
+
+Colours blend smoothly between the reference points; these are not fixed altitude bands. Click an aircraft to see its reported altitude in the popup.
+
 ## Aircraft Icon Mapping
 
 | SVG           | Preview                                                                     | Matching rules                                                                                              |
